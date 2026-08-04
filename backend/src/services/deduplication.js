@@ -2,9 +2,10 @@
 const { supabaseAdmin } = require('../db/supabase');
 
 /**
- * Checks if a transaction from a PDF already exists in the database.
+ * Checks if a transaction from a PDF already exists in the database from an prior SMS log.
  * Match criteria (ALL must match):
  *   - user_id
+ *   - source == 'sms' (never deduplicate against other PDF items in multi-transaction sequences)
  *   - amount (exact)
  *   - transaction_date (exact)
  *   - merchant (fuzzy, case-insensitive)
@@ -17,6 +18,7 @@ async function checkDuplicate(userId, { amount, transaction_date, merchant, type
     .from('transactions')
     .select('id')
     .eq('user_id', userId)
+    .eq('source', 'sms')
     .eq('amount', amount)
     .eq('transaction_date', transaction_date)
     .eq('type', type)

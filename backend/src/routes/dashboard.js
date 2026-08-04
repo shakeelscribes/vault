@@ -17,11 +17,14 @@ const MODE_LABELS = {
   other: 'Other'
 };
 
-function getPeriodDates(period, date) {
+function getPeriodDates(period, date, customStart, customEnd) {
   const ref = date ? new Date(date) : new Date();
   let startDate, endDate;
 
-  if (period === 'daily') {
+  if (period === 'custom') {
+    startDate = customStart || '2020-01-01';
+    endDate = customEnd || new Date().toISOString().split('T')[0];
+  } else if (period === 'daily') {
     const d = ref.toISOString().split('T')[0];
     startDate = endDate = d;
   } else if (period === 'weekly') {
@@ -44,11 +47,19 @@ function getPeriodDates(period, date) {
   return { startDate, endDate };
 }
 
-function getPreviousPeriodDates(period, date) {
+function getPreviousPeriodDates(period, date, customStart, customEnd) {
   const ref = date ? new Date(date) : new Date();
   let startDate, endDate;
 
-  if (period === 'daily') {
+  if (period === 'custom') {
+    const s = new Date(customStart || '2020-01-01');
+    const e = new Date(customEnd || new Date());
+    const diffDays = Math.max(1, Math.round((e - s) / 86400000));
+    const prevE = new Date(s.getTime() - 86400000);
+    const prevS = new Date(prevE.getTime() - (diffDays - 1) * 86400000);
+    startDate = prevS.toISOString().split('T')[0];
+    endDate = prevE.toISOString().split('T')[0];
+  } else if (period === 'daily') {
     const prev = new Date(ref);
     prev.setDate(prev.getDate() - 1);
     const d = prev.toISOString().split('T')[0];
@@ -174,15 +185,15 @@ router.get('/summary', async (req, res, next) => {
   try {
     const userId = req.user.userId;
     const period = req.query.period || 'weekly';
-    const { startDate, endDate } = getPeriodDates(period, req.query.date);
+    const { startDate, endDate } = getPeriodDates(period, req.query.date, req.query.start_date, req.query.end_date);
 
     const { data: txns, error } = await supabaseAdmin
       .from('transactions')
       .select('amount, type, payment_mode, merchant, category_id, transaction_date, categories(name,emoji,color)')
       .eq('user_id', userId)
       .eq('is_deleted', false)
-      .gte('transaction_date', startDate)
-      .lte('transaction_date', endDate);
+      .gte('transaction_date', startDate + 'T00:00:00.000Z')
+      .lte('transaction_date', endDate + 'T23:59:59.999Z');
 
     if (error) throw error;
 
@@ -209,9 +220,10 @@ router.get('/summary', async (req, res, next) => {
     // Daily trend
     const trendMap = {};
     for (const t of txns) {
-      if (!trendMap[t.transaction_date]) trendMap[t.transaction_date] = { date: t.transaction_date, debit: 0, credit: 0 };
-      if (t.type === 'debit') trendMap[t.transaction_date].debit += Number(t.amount);
-      else trendMap[t.transaction_date].credit += Number(t.amount);
+      const dayKey = t.transaction_date.split('T')[0];
+      if (!trendMap[dayKey]) trendMap[dayKey] = { date: dayKey, debit: 0, credit: 0 };
+      if (t.type === 'debit') trendMap[dayKey].debit += Number(t.amount);
+      else trendMap[dayKey].credit += Number(t.amount);
     }
     const dailyTrend = Object.values(trendMap).sort((a, b) => a.date.localeCompare(b.date));
 
@@ -244,8 +256,8 @@ router.get('/analytics', async (req, res, next) => {
   try {
     const userId = req.user.userId;
     const period = req.query.period || 'monthly';
-    const { startDate, endDate } = getPeriodDates(period, req.query.date);
-    const { startDate: prevStartDate, endDate: prevEndDate } = getPreviousPeriodDates(period, req.query.date);
+    const { startDate, endDate } = getPeriodDates(period, req.query.date, req.query.start_date, req.query.end_date);
+    const { startDate: prevStartDate, endDate: prevEndDate } = getPreviousPeriodDates(period, req.query.date, req.query.start_date, req.query.end_date);
 
     // Current period transactions
     const { data: txns, error: txnError } = await supabaseAdmin
@@ -253,8 +265,8 @@ router.get('/analytics', async (req, res, next) => {
       .select('amount, type, payment_mode, merchant, category_id, transaction_date, categories(name,emoji,color)')
       .eq('user_id', userId)
       .eq('is_deleted', false)
-      .gte('transaction_date', startDate)
-      .lte('transaction_date', endDate);
+      .gte('transaction_date', startDate + 'T00:00:00.000Z')
+      .lte('transaction_date', endDate + 'T23:59:59.999Z');
 
     if (txnError) throw txnError;
 
@@ -264,8 +276,8 @@ router.get('/analytics', async (req, res, next) => {
       .select('amount, type, payment_mode, merchant, category_id, transaction_date, categories(name,emoji,color)')
       .eq('user_id', userId)
       .eq('is_deleted', false)
-      .gte('transaction_date', prevStartDate)
-      .lte('transaction_date', prevEndDate);
+      .gte('transaction_date', prevStartDate + 'T00:00:00.000Z')
+      .lte('transaction_date', prevEndDate + 'T23:59:59.999Z');
 
     if (prevError) throw prevError;
 
@@ -386,9 +398,10 @@ router.get('/analytics', async (req, res, next) => {
       by_payment_mode: byPaymentMode,
       daily_trend: Object.values(
         txns.reduce((acc, t) => {
-          if (!acc[t.transaction_date]) acc[t.transaction_date] = { date: t.transaction_date, debit: 0, credit: 0 };
-          if (t.type === 'debit') acc[t.transaction_date].debit += Number(t.amount);
-          else acc[t.transaction_date].credit += Number(t.amount);
+          const dayKey = t.transaction_date.split('T')[0];
+          if (!acc[dayKey]) acc[dayKey] = { date: dayKey, debit: 0, credit: 0 };
+          if (t.type === 'debit') acc[dayKey].debit += Number(t.amount);
+          else acc[dayKey].credit += Number(t.amount);
           return acc;
         }, {})
       ).sort((a, b) => a.date.localeCompare(b.date)),

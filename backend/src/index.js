@@ -37,7 +37,10 @@ app.use(cors({
       origin.includes('localhost') ||
       origin.includes('127.0.0.1') ||
       origin.includes('192.168.') ||
-      origin === config.frontendUrl
+      origin === config.frontendUrl ||
+      origin.endsWith('.vercel.app') ||
+      origin.endsWith('.render.com') ||
+      origin.endsWith('.railway.app')
     ) {
       return callback(null, true);
     }

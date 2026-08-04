@@ -6,19 +6,28 @@ const authMiddleware = require('../middleware/auth');
 const router = Router();
 router.use(authMiddleware);
 
+function escapeField(val) {
+  if (val === null || val === undefined) return '';
+  const str = String(val);
+  if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
 function toCSV(transactions) {
   const header = 'Date,Amount,Type,Payment Mode,Merchant,Category,UPI Ref,Balance After,Note,Source';
   const rows = transactions.map(t => [
-    t.transaction_date,
-    t.amount,
-    t.type,
-    t.payment_mode,
-    t.merchant || '',
-    t.categories?.name || '',
-    t.upi_ref || '',
-    t.balance_after || '',
-    (t.note || '').replace(/,/g, ';'),
-    t.source,
+    escapeField(t.transaction_date ? t.transaction_date.split('T')[0] : ''),
+    escapeField(t.amount),
+    escapeField(t.type),
+    escapeField(t.payment_mode),
+    escapeField(t.merchant || ''),
+    escapeField(t.categories?.name || 'Uncategorized'),
+    escapeField(t.upi_ref || ''),
+    escapeField(t.balance_after || ''),
+    escapeField(t.note || ''),
+    escapeField(t.source),
   ].join(','));
   return [header, ...rows].join('\n');
 }

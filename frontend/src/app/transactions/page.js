@@ -218,39 +218,141 @@ export default function TransactionsPage() {
 
       {/* Filters Drawer */}
       {showFilters && (
-        <div className="card" style={{ padding: '16px', marginBottom: '18px', display: 'flex', flexDirection: 'column', gap: '12px', borderLeft: '3px solid var(--accent)' }}>
+        <div className="card" style={{ padding: '16px', marginBottom: '18px', display: 'flex', flexDirection: 'column', gap: '14px', borderLeft: '3px solid var(--accent)', overflow: 'hidden' }}>
           <div className="flex-between">
-            <h3 style={{ fontSize: '0.9rem', color: 'var(--text-primary)' }}>🎛️ Filter History</h3>
+            <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>🎛️ Filter History</h3>
             {activeFilterCount > 0 && (
-              <button className="btn btn-ghost" onClick={clearFilters} style={{ fontSize: '0.75rem', padding: '4px 8px' }}>Reset All</button>
+              <button className="btn btn-ghost" onClick={clearFilters} style={{ fontSize: '0.75rem', padding: '4px 10px' }}>Reset All</button>
             )}
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <div>
-              <label className="label">Start Date</label>
-              <input type="date" className="input" value={filters.start_date} onChange={(e) => setFilters(p => ({ ...p, start_date: e.target.value }))} />
+          {/* Date Range: Stacked vertically with 16px spacing and 220px compact box width to eliminate iOS native date picker horizontal collision and awkward stretching */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%' }}>
+            <div style={{ width: '220px', maxWidth: '100%' }}>
+              <label className="label" style={{ display: 'block', fontSize: '0.75rem', marginBottom: '4px', fontWeight: 600 }}>START DATE</label>
+              <input
+                type="date"
+                value={filters.start_date}
+                max={filters.end_date || new Date().toISOString().split('T')[0]}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  const maxDate = filters.end_date || new Date().toISOString().split('T')[0];
+                  if (val && val > maxDate) return;
+                  setFilters(p => ({ ...p, start_date: val }));
+                }}
+                style={{
+                  width: '100%',
+                  height: '42px',
+                  padding: '6px 10px',
+                  fontSize: '0.85rem',
+                  boxSizing: 'border-box',
+                  borderRadius: '10px',
+                  border: '1px solid var(--border-glass)',
+                  background: 'var(--bg-glass-light)',
+                  color: 'var(--text-primary)',
+                  outline: 'none',
+                  fontFamily: 'inherit',
+                }}
+              />
             </div>
-            <div>
-              <label className="label">End Date</label>
-              <input type="date" className="input" value={filters.end_date} onChange={(e) => setFilters(p => ({ ...p, end_date: e.target.value }))} />
+            <div style={{ width: '220px', maxWidth: '100%' }}>
+              <label className="label" style={{ display: 'block', fontSize: '0.75rem', marginBottom: '4px', fontWeight: 600 }}>END DATE</label>
+              <input
+                type="date"
+                value={filters.end_date}
+                min={filters.start_date || undefined}
+                max={new Date().toISOString().split('T')[0]}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  const maxDate = new Date().toISOString().split('T')[0];
+                  if (val && val > maxDate) return;
+                  if (val && filters.start_date && val < filters.start_date) return;
+                  setFilters(p => ({ ...p, end_date: val }));
+                }}
+                style={{
+                  width: '100%',
+                  height: '42px',
+                  padding: '6px 10px',
+                  fontSize: '0.85rem',
+                  boxSizing: 'border-box',
+                  borderRadius: '10px',
+                  border: '1px solid var(--border-glass)',
+                  background: 'var(--bg-glass-light)',
+                  color: 'var(--text-primary)',
+                  outline: 'none',
+                  fontFamily: 'inherit',
+                }}
+              />
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <div>
-              <label className="label">Category</label>
-              <select className="input" value={filters.category_id} onChange={(e) => setFilters(p => ({ ...p, category_id: e.target.value }))}>
+          {/* Responsive auto-fit grid: automatically goes single-column full-width on iPhone/mobile so labels are never truncated! */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px', width: '100%', minWidth: 0 }}>
+            <div style={{ minWidth: 0 }}>
+              <label className="label" style={{ display: 'block', fontSize: '0.75rem', marginBottom: '4px' }}>CATEGORY</label>
+              <select
+                value={filters.category_id}
+                onChange={(e) => setFilters(p => ({ ...p, category_id: e.target.value }))}
+                style={{
+                  width: '100%',
+                  minWidth: 0,
+                  height: '44px',
+                  padding: '8px 34px 8px 14px',
+                  fontSize: '0.9rem',
+                  color: 'var(--text-primary)',
+                  background: 'var(--bg-glass-light)',
+                  border: '1px solid var(--border-glass)',
+                  borderRadius: '10px',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                  appearance: 'none',
+                  WebkitAppearance: 'none',
+                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239CA3AF'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M8 9l4-4 4 4m0 6l-4 4-4-4'/%3E%3C/svg%3E")`,
+                  backgroundRepeat: 'no-repeat',
+                  backgroundPosition: 'right 12px center',
+                  backgroundSize: '15px',
+                  cursor: 'pointer',
+                  textOverflow: 'ellipsis',
+                  overflow: 'hidden',
+                  whiteSpace: 'nowrap',
+                }}
+              >
                 <option value="">All Categories</option>
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>{c.emoji} {c.name}</option>
                 ))}
               </select>
             </div>
-            <div>
-              <label className="label">Payment Medium</label>
-              <select className="input" value={filters.payment_mode} onChange={(e) => setFilters(p => ({ ...p, payment_mode: e.target.value }))}>
-                <option value="">All Mediums (UPI, POS, ATM...)</option>
+            <div style={{ minWidth: 0 }}>
+              <label className="label" style={{ display: 'block', fontSize: '0.75rem', marginBottom: '4px' }}>PAYMENT MEDIUM</label>
+              <select
+                value={filters.payment_mode}
+                onChange={(e) => setFilters(p => ({ ...p, payment_mode: e.target.value }))}
+                style={{
+                  width: '100%',
+                  minWidth: 0,
+                  height: '44px',
+                  padding: '8px 34px 8px 14px',
+                  fontSize: '0.9rem',
+                  color: 'var(--text-primary)',
+                  background: 'var(--bg-glass-light)',
+                  border: '1px solid var(--border-glass)',
+                  borderRadius: '10px',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                  appearance: 'none',
+                  WebkitAppearance: 'none',
+                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239CA3AF'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M8 9l4-4 4 4m0 6l-4 4-4-4'/%3E%3C/svg%3E")`,
+                  backgroundRepeat: 'no-repeat',
+                  backgroundPosition: 'right 12px center',
+                  backgroundSize: '15px',
+                  cursor: 'pointer',
+                  textOverflow: 'ellipsis',
+                  overflow: 'hidden',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                <option value="">All Payment Modes</option>
                 {PAYMENT_MODES.map((m) => (
                   <option key={m.value} value={m.value}>{m.label}</option>
                 ))}
@@ -258,22 +360,74 @@ export default function TransactionsPage() {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <div>
-              <label className="label">Transaction Type</label>
-              <select className="input" value={filters.type} onChange={(e) => setFilters(p => ({ ...p, type: e.target.value }))}>
-                <option value="">All (Income & Expenses)</option>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px', width: '100%', minWidth: 0 }}>
+            <div style={{ minWidth: 0 }}>
+              <label className="label" style={{ display: 'block', fontSize: '0.75rem', marginBottom: '4px' }}>TRANSACTION TYPE</label>
+              <select
+                value={filters.type}
+                onChange={(e) => setFilters(p => ({ ...p, type: e.target.value }))}
+                style={{
+                  width: '100%',
+                  minWidth: 0,
+                  height: '44px',
+                  padding: '8px 34px 8px 14px',
+                  fontSize: '0.9rem',
+                  color: 'var(--text-primary)',
+                  background: 'var(--bg-glass-light)',
+                  border: '1px solid var(--border-glass)',
+                  borderRadius: '10px',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                  appearance: 'none',
+                  WebkitAppearance: 'none',
+                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239CA3AF'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M8 9l4-4 4 4m0 6l-4 4-4-4'/%3E%3C/svg%3E")`,
+                  backgroundRepeat: 'no-repeat',
+                  backgroundPosition: 'right 12px center',
+                  backgroundSize: '15px',
+                  cursor: 'pointer',
+                  textOverflow: 'ellipsis',
+                  overflow: 'hidden',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                <option value="">All Types (Income & Expense)</option>
                 <option value="debit">Only Debits (Expenses)</option>
                 <option value="credit">Only Credits (Income)</option>
               </select>
             </div>
-            <div>
-              <label className="label">Sort Order</label>
-              <select className="input" value={filters.sort} onChange={(e) => setFilters(p => ({ ...p, sort: e.target.value }))}>
-                <option value="date_desc">Date: Newest First</option>
-                <option value="date_asc">Date: Oldest First</option>
-                <option value="amount_desc">Amount: Highest First</option>
-                <option value="amount_asc">Amount: Lowest First</option>
+            <div style={{ minWidth: 0 }}>
+              <label className="label" style={{ display: 'block', fontSize: '0.75rem', marginBottom: '4px' }}>SORT ORDER</label>
+              <select
+                value={filters.sort}
+                onChange={(e) => setFilters(p => ({ ...p, sort: e.target.value }))}
+                style={{
+                  width: '100%',
+                  minWidth: 0,
+                  height: '44px',
+                  padding: '8px 34px 8px 14px',
+                  fontSize: '0.9rem',
+                  color: 'var(--text-primary)',
+                  background: 'var(--bg-glass-light)',
+                  border: '1px solid var(--border-glass)',
+                  borderRadius: '10px',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                  appearance: 'none',
+                  WebkitAppearance: 'none',
+                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239CA3AF'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M8 9l4-4 4 4m0 6l-4 4-4-4'/%3E%3C/svg%3E")`,
+                  backgroundRepeat: 'no-repeat',
+                  backgroundPosition: 'right 12px center',
+                  backgroundSize: '15px',
+                  cursor: 'pointer',
+                  textOverflow: 'ellipsis',
+                  overflow: 'hidden',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                <option value="date_desc">Date: Newest First 📅</option>
+                <option value="date_asc">Date: Oldest First 📅</option>
+                <option value="amount_desc">Amount: Highest First 📈</option>
+                <option value="amount_asc">Amount: Lowest First 📉</option>
               </select>
             </div>
           </div>

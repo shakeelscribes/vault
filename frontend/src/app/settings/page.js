@@ -1,123 +1,38 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
+import { usePDFUpload } from '@/hooks/usePDFUpload';
 import { api } from '@/lib/api';
 import { BottomNav } from '@/components/layout/BottomNav';
 import { ManualEntryModal } from '@/components/transactions/ManualEntryFAB';
 import { RefreshButton } from '@/components/common/RefreshButton';
 import { Sun, Upload, LogOut, FileSpreadsheet, CheckCircle, AlertCircle, XCircle } from 'lucide-react';
-import toast from 'react-hot-toast';
 
 export default function SettingsPage() {
   const { logout } = useAuth();
   const { toggle: toggleTheme } = useTheme();
+  const { uploading, uploadPhase, uploadProgress, uploadResult, startUpload, cancelUpload } = usePDFUpload();
   const [user, setUser] = useState(null);
   const [categories, setCategories] = useState([]);
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
-
-  // PDF Upload state
-  const [uploading, setUploading] = useState(false);
-  const [uploadPhase, setUploadPhase] = useState(''); // 'reading' | 'parsing' | 'saving' | 'done' | 'error'
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [uploadResult, setUploadResult] = useState(null);
-  const intervalRef = useRef(null);
-  const abortControllerRef = useRef(null);
 
   useEffect(() => {
     api.me().then(res => setUser(res.user)).catch(console.error);
     api.getCategories().then(setCategories).catch(console.error);
   }, []);
 
-  async function handleFileUpload(e) {
+  function handleFileUpload(e) {
     const file = e.target.files[0];
     if (!file) return;
-
-    // Reset state
-    setUploadResult(null);
-    setUploading(true);
-    setUploadPhase('reading');
-    setUploadProgress(5);
-
-    const formData = new FormData();
-    formData.append('file', file);
-
-    // Animate progress smoothly
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    let currentProgress = 5;
-    intervalRef.current = setInterval(() => {
-      currentProgress += Math.random() * 2.5 + 0.5;
-      if (currentProgress >= 90) currentProgress = 90;
-      setUploadProgress(currentProgress);
-    }, 250);
-
-    // Phase transitions based on estimated timing
-    setTimeout(() => setUploadPhase('parsing'), 800);
-    setTimeout(() => setUploadPhase('saving'), 3000);
-
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
-
-    try {
-      const token = localStorage.getItem('vault_token');
-      const BASE = process.env.NEXT_PUBLIC_BACKEND_URL;
-      const res = await fetch(`${BASE}/api/pdf/upload`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
-        signal: controller.signal,
-      });
-
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-      const data = await res.json();
-
-      if (!res.ok) {
-        setUploadPhase('error');
-        setUploadProgress(100);
-        setUploadResult({ error: data.error || 'Upload failed' });
-        toast.error(data.error || 'PDF upload failed');
-      } else {
-        setUploadPhase('done');
-        setUploadProgress(100);
-        setUploadResult(data);
-        toast.success(`Imported ${data.imported} transactions!`);
-      }
-    } catch (err) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-      if (err.name === 'AbortError' || err.message?.includes('aborted')) {
-        setUploadPhase('error');
-        setUploadProgress(0);
-        setUploadResult({ error: 'Processing cancelled by user' });
-      } else {
-        setUploadPhase('error');
-        setUploadProgress(100);
-        setUploadResult({ error: err.message || 'PDF upload failed' });
-        toast.error(err.message || 'PDF upload failed');
-      }
-    } finally {
-      setUploading(false);
-      e.target.value = '';
-    }
+    startUpload(file);
+    e.target.value = '';
   }
 
   function handleCancelUpload(e) {
     e.preventDefault();
     e.stopPropagation();
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-      abortControllerRef.current = null;
-    }
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-    setUploading(false);
-    setUploadPhase('error');
-    setUploadProgress(0);
-    setUploadResult({ error: 'Processing cancelled by user' });
-    toast('PDF processing cancelled', { icon: '🛑', style: { borderRadius: '10px', background: 'var(--bg-glass)', color: 'var(--text-primary)' } });
+    cancelUpload();
   }
 
   function handleExportCSV() {

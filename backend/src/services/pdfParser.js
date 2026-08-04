@@ -27,34 +27,87 @@ async function extractPDFText(buffer, password = null) {
  * Returns array of raw row strings for Groq parsing.
  */
 function splitIntoRows(text) {
-  const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 5);
-
-  // Canara Bank rows typically start with a date pattern: DD/MM/YYYY or DD-MM-YYYY
+  const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
   const datePattern = /^(\d{2}[\/\-]\d{2}[\/\-]\d{2,4})/;
 
   const rows = [];
+  let openingBalance = null;
   let currentRow = null;
 
+  const ignorePatterns = [
+    /^page\s*\d+/i,
+    /^date\s*particulars/i,
+    /^customer\s+id/i,
+    /^branch\s+(?:code|name)/i,
+    /^ifsc\s+code/i,
+    /^statement\s+for\s+a\/c/i,
+    /^disclaimer/i,
+    /^unless\s+the\s+constituent/i,
+    /^beware\s+of\s+phishing/i,
+    /^imb\s+users/i,
+    /^do\s+not\s+share/i,
+    /^computer\s+output/i,
+    /^end\s+of\s+statement/i,
+    /^closing\s+balance/i,
+    /^brought\s+forward/i,
+    /^carried\s+forward/i,
+  ];
+
   for (const line of lines) {
+    // Detect Opening Balance - handles both "Opening Balance 490.79" AND "Opening Balance490.79" (no space)
+    const opMatch = line.match(/(?:opening\s*balance|brought\s*forward)\s*(\d[\d,]*\.\d{1,2})/i);
+    if (opMatch) {
+      openingBalance = parseFloat(opMatch[1].replace(/,/g, ''));
+    }
+
+    // Completely filter out headers, footers, page numbering, opening/closing balances from transaction rows
+    if (ignorePatterns.some(p => p.test(line))) {
+      continue;
+    }
+    // Also filter opening balance line (may not have a space)
+    if (/^opening\s*balance/i.test(line)) {
+      continue;
+    }
+    if (/www\.canarabank\.com|please\s*beware|change\s+in\s+the\s+address/i.test(line)) {
+      continue;
+    }
+
     if (datePattern.test(line)) {
       if (currentRow) rows.push(currentRow);
       currentRow = line;
-    } else if (currentRow && line.length > 0) {
+    } else if (currentRow) {
       currentRow += ' ' + line;
     }
   }
   if (currentRow) rows.push(currentRow);
 
-  logger.info(`PDF split into ${rows.length} rows`);
+  // Post-process each row:
+  // 1. Strip repeated page headers that got merged into row text (e.g. "DateParticularsDepositsWithdrawalsBalance")
+  // 2. Split concatenated amount+balance numbers (e.g. "580.001,033.97" → "580.00 1,033.97", "35.00998.97" → "35.00 998.97")
+  for (let i = 0; i < rows.length; i++) {
+    // Remove inline page headers
+    rows[i] = rows[i].replace(/DateParticulars\S*/gi, '').trim();
+    
+    // KEY FIX: pdf-parse extracts Canara Bank PDF table columns without spaces between them.
+    // The Deposits, Withdrawals, and Balance columns get concatenated like:
+    //   "580.001,033.97"  (amount=580.00, balance=1,033.97)
+    //   "35.00998.97"     (amount=35.00, balance=998.97)
+    //   "706.82583.97"    (amount=706.82, balance=583.97)
+    // We need to insert a space AFTER the first decimal number ends and BEFORE the next one starts.
+    // Pattern: a decimal number ending (digit after ".XX") followed immediately by another digit
+    rows[i] = rows[i].replace(/(\.\d{2})(\d)/g, '$1 $2');
+  }
+
+  rows.openingBalance = openingBalance;
+  logger.info(`PDF split into ${rows.length} clean transaction rows. Opening balance seeded: ${openingBalance}`);
   return rows;
 }
 
 /**
- * Fast local deterministic parser for standardized Canara Bank statement rows.
- * Parses dates, amounts, balances, UPI refs, merchant names, and categories in milliseconds.
- * Bypasses cloud LLM rate limits completely for known table formats.
+ * Fast local deterministic parser with Mathematical Ledger Balance Verification.
+ * Eliminates balance/amount confusion and mathematically distinguishes Deposits vs Withdrawals.
  */
-function parseCanaraRow(rowText) {
+function parseCanaraRow(rowText, prevBalance = null) {
   try {
     const text = rowText.trim();
     // 1. Extract Date at start
@@ -66,40 +119,81 @@ function parseCanaraRow(rowText) {
     if (year.length === 2) year = '20' + year;
     const transaction_date = `${year}-${month}-${day}T00:00:00Z`;
 
-    // 2. Extract Amount and Balance by finding all monetary decimal figures in the string
-    // This avoids failures if trailing text like 'Cr', 'Dr', or page numbers exist at the end of the line
-    const matches = [...text.matchAll(/(\d+(?:,\d+)*\.\d{1,2})\b/g)];
+    // 2. Extract monetary figures (only match numbers with decimals — these are currency values)
+    const matches = [...text.matchAll(/(\d+(?:,\d+)*\.\d{2})\b/g)];
     if (!matches || matches.length === 0) {
       logger.warn('Local parser could not find monetary decimal figures in row:', text.substring(0, 60));
       return null;
     }
 
+    // Filter out any monetary matches that appear inside the narration timestamp (e.g. date portions)
+    // Real amounts and balances are always the LAST two decimal numbers in the row
     let amountIndex = 0;
     let amount = 0;
     let balance_after = null;
+    let type = 'debit';
+    let foundMathMatch = false;
 
-    if (matches.length >= 2) {
-      const amountMatch = matches[matches.length - 2];
-      const balanceMatch = matches[matches.length - 1];
-      amount = parseFloat(amountMatch[1].replace(/,/g, ''));
-      balance_after = parseFloat(balanceMatch[1].replace(/,/g, ''));
-      amountIndex = amountMatch.index;
-    } else {
-      const amountMatch = matches[0];
-      amount = parseFloat(amountMatch[1].replace(/,/g, ''));
-      amountIndex = amountMatch.index;
+    // TIER 1: Mathematical Ledger Continuity (Previous Balance ± Amount = New Balance)
+    if (prevBalance !== null && prevBalance !== undefined && !isNaN(prevBalance) && matches.length >= 2) {
+      for (let idx = matches.length - 2; idx >= 0; idx--) {
+        const c1 = parseFloat(matches[idx][1].replace(/,/g, ''));
+        const c2 = parseFloat(matches[idx + 1][1].replace(/,/g, ''));
+        
+        if (Math.abs((prevBalance + c1) - c2) <= 0.05) {
+          amount = c1;
+          balance_after = c2;
+          type = 'credit'; // Verified Deposit
+          amountIndex = matches[idx].index;
+          foundMathMatch = true;
+          break;
+        } else if (Math.abs((prevBalance - c1) - c2) <= 0.05) {
+          amount = c1;
+          balance_after = c2;
+          type = 'debit'; // Verified Withdrawal
+          amountIndex = matches[idx].index;
+          foundMathMatch = true;
+          break;
+        }
+      }
+    }
+
+    // TIER 2: Column Position & Comprehensive Keyword Fallback (for rows without prior running balance)
+    if (!foundMathMatch) {
+      if (matches.length >= 2) {
+        const amountMatch = matches[matches.length - 2];
+        const balanceMatch = matches[matches.length - 1];
+        amount = parseFloat(amountMatch[1].replace(/,/g, ''));
+        balance_after = parseFloat(balanceMatch[1].replace(/,/g, ''));
+        amountIndex = amountMatch.index;
+      } else {
+        const amountMatch = matches[0];
+        amount = parseFloat(amountMatch[1].replace(/,/g, ''));
+        amountIndex = amountMatch.index;
+      }
+
+      const narrationCandidate = text.slice(0, amountIndex).toUpperCase();
+      if (
+        narrationCandidate.includes('UPI/CR/') ||
+        narrationCandidate.includes('NEFT CR') ||
+        narrationCandidate.includes('/CR/') ||
+        /\bCR\b/.test(narrationCandidate) ||
+        narrationCandidate.includes('DEPOSIT') ||
+        narrationCandidate.includes('BY ') ||
+        narrationCandidate.includes('INTEREST') ||
+        narrationCandidate.includes('DIVIDEND')
+      ) {
+        type = 'credit';
+      } else {
+        type = 'debit';
+      }
     }
 
     if (isNaN(amount) || amount === 0) return null;
 
     // 3. Extract middle narration between Date and Amount
     let narration = text.slice(dateMatch[0].length, amountIndex).trim();
-
-    // 4. Determine Type & Mode
-    let type = 'debit';
-    if (narration.includes('UPI/CR/') || narration.includes('NEFT CR') || narration.includes('/CR/') || narration.includes('DEPOSIT') || narration.includes('BY ')) {
-      type = 'credit';
-    }
+    if (!narration && amountIndex === 0) narration = text.trim();
 
     let payment_mode = 'other';
     if (narration.includes('UPI/')) payment_mode = 'upi';

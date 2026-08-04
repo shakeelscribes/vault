@@ -46,19 +46,27 @@ router.post('/upload', upload.single('file'), async (req, res, next) => {
 
     importRecord = imp;
 
+    let clientCancelled = false;
+    req.on('close', () => {
+      if (!res.writableEnded) {
+        clientCancelled = true;
+      }
+    });
+
     // Extract text
     const password = req.body.password || null;
     const text = await extractPDFText(req.file.buffer, password);
 
     // Split into rows
     const rows = splitIntoRows(text);
+    let runningBalance = rows.openingBalance !== undefined ? rows.openingBalance : null;
 
     let importedCount = 0;
     let duplicateCount = 0;
     let flaggedCount = 0;
 
     for (let i = 0; i < rows.length; i++) {
-      if (req.socket?.destroyed || req.destroyed) {
+      if (clientCancelled) {
         logger.warn(`Client cancelled connection at row ${i + 1}/${rows.length}. Halting import.`);
         if (importRecord) {
           await supabaseAdmin
@@ -70,8 +78,8 @@ router.post('/upload', upload.single('file'), async (req, res, next) => {
       }
       const row = rows[i];
       try {
-        logger.info(`Processing PDF row ${i + 1}/${rows.length}: ${row.substring(0, 60)}`);
-        let parsed = parseCanaraRow(row);
+        logger.info(`Processing PDF row ${i + 1}/${rows.length} (Running Bal: ${runningBalance}): ${row.substring(0, 60)}`);
+        let parsed = parseCanaraRow(row, runningBalance);
         if (!parsed || !parsed.amount || !parsed.type) {
           logger.info(`Local parser missed row ${i + 1}, falling back to Groq`);
           parsed = await parsePDFRow(row);
@@ -79,6 +87,9 @@ router.post('/upload', upload.single('file'), async (req, res, next) => {
         if (!parsed || parsed.error || !parsed.amount || !parsed.type) {
           logger.warn(`Skipping unparseable row ${i + 1}`);
           continue;
+        }
+        if (parsed.balance_after !== null && parsed.balance_after !== undefined && !isNaN(parsed.balance_after)) {
+          runningBalance = parsed.balance_after;
         }
 
         const { isDuplicate } = await checkDuplicate(userId, {

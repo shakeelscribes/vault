@@ -17,6 +17,7 @@ const PERIOD_LABELS = {
   weekly: 'This Week',
   monthly: 'This Month',
   all: 'All Time',
+  custom: 'Custom Period 📅',
 };
 
 export default function AnalyticsPage() {
@@ -24,20 +25,29 @@ export default function AnalyticsPage() {
   const [data, setData] = useState(null);
   const [categories, setCategories] = useState([]);
   const [period, setPeriod] = useState('daily');
+  const [customDates, setCustomDates] = useState({
+    start_date: '',
+    end_date: '',
+  });
   const [loading, setLoading] = useState(true);
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
 
   const fetchAnalytics = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await api.analytics({ period });
+      const params = { period };
+      if (period === 'custom') {
+        params.start_date = customDates.start_date;
+        params.end_date = customDates.end_date;
+      }
+      const res = await api.analytics(params);
       setData(res);
     } catch (err) {
       console.error('Error fetching analytics:', err);
     } finally {
       setLoading(false);
     }
-  }, [period]);
+  }, [period, customDates]);
 
   useEffect(() => {
     fetchAnalytics();
@@ -177,6 +187,86 @@ export default function AnalyticsPage() {
         ))}
       </div>
 
+      {period === 'custom' && (
+        <div className="card" style={{ padding: '14px 16px', marginBottom: '18px', borderLeft: '3px solid var(--accent)', overflow: 'hidden' }}>
+          <div className="flex-between" style={{ marginBottom: '14px', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+            <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+              🗓️ Select Custom Analysis Period
+            </div>
+            <button
+              className="btn btn-ghost"
+              onClick={() => {
+                setCustomDates({
+                  start_date: '',
+                  end_date: '',
+                });
+              }}
+              style={{ fontSize: '0.75rem', padding: '4px 10px' }}
+            >
+              Reset All
+            </button>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%' }}>
+            <div style={{ width: '220px', maxWidth: '100%' }}>
+              <label className="label" style={{ display: 'block', fontSize: '0.75rem', marginBottom: '4px', fontWeight: 600 }}>FROM DATE</label>
+              <input
+                type="date"
+                value={customDates.start_date}
+                max={customDates.end_date || new Date().toISOString().split('T')[0]}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  const maxDate = customDates.end_date || new Date().toISOString().split('T')[0];
+                  if (val && val > maxDate) return;
+                  setCustomDates(p => ({ ...p, start_date: val }));
+                }}
+                style={{
+                  width: '100%',
+                  height: '42px',
+                  padding: '6px 10px',
+                  fontSize: '0.85rem',
+                  boxSizing: 'border-box',
+                  borderRadius: '10px',
+                  border: '1px solid var(--border-glass)',
+                  background: 'var(--bg-glass-light)',
+                  color: 'var(--text-primary)',
+                  outline: 'none',
+                  fontFamily: 'inherit',
+                }}
+              />
+            </div>
+            <div style={{ width: '220px', maxWidth: '100%' }}>
+              <label className="label" style={{ display: 'block', fontSize: '0.75rem', marginBottom: '4px', fontWeight: 600 }}>TO DATE</label>
+              <input
+                type="date"
+                value={customDates.end_date}
+                min={customDates.start_date || undefined}
+                max={new Date().toISOString().split('T')[0]}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  const maxDate = new Date().toISOString().split('T')[0];
+                  if (val && val > maxDate) return;
+                  if (val && customDates.start_date && val < customDates.start_date) return;
+                  setCustomDates(p => ({ ...p, end_date: val }));
+                }}
+                style={{
+                  width: '100%',
+                  height: '42px',
+                  padding: '6px 10px',
+                  fontSize: '0.85rem',
+                  boxSizing: 'border-box',
+                  borderRadius: '10px',
+                  border: '1px solid var(--border-glass)',
+                  background: 'var(--bg-glass-light)',
+                  color: 'var(--text-primary)',
+                  outline: 'none',
+                  fontFamily: 'inherit',
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {loading ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div className="skeleton" style={{ height: '100px' }} />
@@ -217,7 +307,7 @@ export default function AnalyticsPage() {
           {data?.insights && data.insights.length > 0 && (
             <div className="card" style={{ padding: '16px', marginBottom: '20px', borderLeft: '4px solid var(--accent)' }}>
               <h3 style={{ fontSize: '1rem', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
-                <span>🧠</span> Intelligent Summary ({PERIOD_LABELS[period]})
+                <span>🧠</span> Intelligent Summary ({period === 'custom' ? (customDates.start_date || customDates.end_date ? `${customDates.start_date || 'Start'} to ${customDates.end_date || 'Present'}` : 'All Custom Dates') : PERIOD_LABELS[period]})
               </h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {data.insights.map((ins, idx) => (
