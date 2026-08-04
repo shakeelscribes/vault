@@ -55,13 +55,21 @@ export default function TransactionsPage() {
   const loadTransactions = useCallback(async () => {
     try {
       setLoading(true);
-      const params = {
-        search: search || undefined,
-        limit: 1000, // Ensure we fetch previously recorded transactions in full
+      // Build clean params — strip empty/undefined values so URLSearchParams
+      // doesn't serialize them as the literal string "undefined"
+      const rawParams = {
+        limit: 1000,
         ...Object.fromEntries(
           Object.entries(filters).filter(([, v]) => v !== '')
         ),
       };
+      if (search && search.trim()) {
+        rawParams.search = search.trim();
+      }
+      // Remove any remaining undefined/null/empty values
+      const params = Object.fromEntries(
+        Object.entries(rawParams).filter(([, v]) => v != null && v !== '')
+      );
       const res = await api.getTransactions(params);
       setTransactions(res.transactions || []);
     } catch (err) {
