@@ -7,7 +7,7 @@ import { BottomNav } from '@/components/layout/BottomNav';
 import { ManualEntryModal } from '@/components/transactions/ManualEntryFAB';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend, ArcElement } from 'chart.js';
 import { Line, Doughnut, Bar } from 'react-chartjs-2';
-import { ArrowDownLeft, ArrowUpRight, Wallet, TrendingUp, Sparkles, Credit Card as CardIcon, DollarSign, PieChart, ShoppingBag } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, Wallet, TrendingUp, Sparkles, CreditCard as CardIcon, DollarSign, PieChart, ShoppingBag } from 'lucide-react';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend, ArcElement);
 
