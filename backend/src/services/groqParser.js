@@ -53,10 +53,29 @@ If you cannot parse the SMS, return:
 { "error": "unparseable", "reason": "<brief reason>", "confidence": 0.0 }`;
 
 const PDF_ROW_SYSTEM_PROMPT = `You are parsing a single transaction row from a Canara Bank PDF bank statement.
-The row may contain: Date, Description/Narration, Debit amount, Credit amount, Balance.
-Extract and return the same JSON format as the SMS parser.
-If Debit column has a value → type = "debit". If Credit column has a value → type = "credit".
-Return ONLY valid JSON, no explanation.`;
+The row contains: Date (DD-MM-YYYY or DD/MM/YYYY), Description/Narration, Transaction Amount (Deposit/Withdrawal), and Running Balance.
+Canara Bank Narration Rules:
+1. "UPI/CR/..." indicates a CREDIT (Deposit). "UPI/DR/..." indicates a DEBIT (Withdrawal). "NEFT CR..." indicates CREDIT (Deposit).
+2. Extract the clean Merchant / Person Name from the narration (e.g., in "UPI/DR/621189274408/ZOMATO/INDB/..." merchant is "ZOMATO"; in "PAY*BIGTREEENTERTAIN..." merchant is "BookMyShow"; in "NEFT CR-...-ETERNAL LIMITED" merchant is "ETERNAL LIMITED"; in "PSSMULTIPLEX..." merchant is "PSS MULTIPLEX").
+3. When two numbers appear at the end of the text (e.g., "298.00 2,327.47"), the FIRST number (298.00) is the actual transaction amount, and the SECOND number (2,327.47) is the remaining Account Balance (balance_after). Never mistake the running balance for the amount. Strip commas from numbers before parsing as floats.
+4. Extract the payment mode: upi, neft, imps, rtgs, card_pos (for PAY* or POS purchases), atm, cash, or other.
+5. Convert the transaction Date from DD-MM-YYYY to ISO 8601 string format YYYY-MM-DDT00:00:00Z for transaction_date.
+6. Determine a suitable financial category: Food, Transport, Entertainment, Shopping, Bills, Health, Education, Income, Cash, Transfer, Other.
+7. Extract the 12-digit UPI reference number if present after UPI/DR/ or UPI/CR/ as upi_ref.
+
+Return ONLY valid JSON with this exact schema:
+{
+  "type": "debit" or "credit",
+  "amount": 298.00,
+  "merchant": "ZOMATO",
+  "category": "Food",
+  "payment_mode": "upi",
+  "upi_ref": "621189274408",
+  "balance_after": 2327.47,
+  "transaction_date": "2026-07-30T00:00:00Z",
+  "confidence": 0.98
+}
+Return ONLY valid JSON, no markdown formatting or explanation.`;
 
 // ── Retry Helper ──────────────────────────────────────────────────────
 async function withRetry(fn, retries = 3) {
