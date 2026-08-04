@@ -91,7 +91,7 @@ export default function Dashboard() {
       <div className="flex-between" style={{ marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <h1 style={{ fontSize: '1.6rem', color: 'var(--text-primary)', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ color: 'var(--accent)' }}>⚡ VAULT</span>
+            <span style={{ color: 'var(--accent)' }}>⚡ Vault</span>
           </h1>
           <p className="text-muted" style={{ fontSize: '0.82rem' }}>Canara Bank • Live SMS Intelligence</p>
         </div>

@@ -1,6 +1,6 @@
 {
-  "name": "VAULT",
-  "short_name": "VAULT",
+  "name": "Vault",
+  "short_name": "Vault",
   "description": "Real-time personal expense tracker for Indian banking",
   "display": "standalone",
   "orientation": "portrait",

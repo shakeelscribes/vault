@@ -50,7 +50,7 @@ export default function LoginPage() {
     }}>
       <div className="card" style={{ width: '100%', maxWidth: '400px', padding: '32px' }}>
         <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-          <h1 style={{ color: 'var(--accent)', fontSize: '2.5rem', marginBottom: '4px' }}>VAULT</h1>
+          <h1 style={{ color: 'var(--accent)', fontSize: '2.5rem', marginBottom: '4px' }}>Vault</h1>
           <p className="text-muted" style={{ fontSize: '0.9rem' }}>Real-time expenditure tracking</p>
         </div>
 

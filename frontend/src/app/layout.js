@@ -12,10 +12,10 @@ export const viewport = {
 };
 
 export const metadata = {
-  title: 'VAULT — Real-Time Expense Tracker',
+  title: 'Vault',
   description: 'Track every rupee in real time. Canara Bank SMS → instant dashboard.',
   manifest: '/manifest.json',
-  appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: 'VAULT' },
+  appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: 'Vault' },
 };
 
 export default function RootLayout({ children }) {
