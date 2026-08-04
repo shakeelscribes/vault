@@ -82,7 +82,7 @@ export default function BudgetsPage() {
           <form onSubmit={handleCreateBudget} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <div>
               <label className="label">Category (Leave empty for Overall)</label>
-              <select className="input" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+              <select className="select" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
                 <option value="">All Categories (Overall)</option>
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>{c.emoji} {c.name}</option>
@@ -91,7 +91,7 @@ export default function BudgetsPage() {
             </div>
             <div>
               <label className="label">Period</label>
-              <select className="input" value={period} onChange={(e) => setPeriod(e.target.value)}>
+              <select className="select" value={period} onChange={(e) => setPeriod(e.target.value)}>
                 <option value="daily">Daily</option>
                 <option value="weekly">Weekly</option>
                 <option value="monthly">Monthly</option>

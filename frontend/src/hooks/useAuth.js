@@ -1,10 +1,12 @@
 'use client';
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 
 export function useAuth() {
   const router = useRouter();
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const token = localStorage.getItem('vault_token');
@@ -12,11 +14,17 @@ export function useAuth() {
       router.replace('/login');
       return;
     }
-    // Verify token is still valid
-    api.me().catch(() => {
-      localStorage.removeItem('vault_token');
-      router.replace('/login');
-    });
+    // Verify token & fetch user details
+    api.me()
+      .then((res) => {
+        setUser(res.user);
+        setLoading(false);
+      })
+      .catch(() => {
+        localStorage.removeItem('vault_token');
+        router.replace('/login');
+        setLoading(false);
+      });
   }, [router]);
 
   function logout() {
@@ -26,5 +34,5 @@ export function useAuth() {
     });
   }
 
-  return { logout };
+  return { user, loading, logout };
 }

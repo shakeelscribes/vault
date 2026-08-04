@@ -6,6 +6,17 @@ const authMiddleware = require('../middleware/auth');
 const router = Router();
 router.use(authMiddleware);
 
+const MODE_LABELS = {
+  upi: 'UPI',
+  card_pos: 'Debit Card (POS)',
+  atm: 'ATM Cash Withdrawal',
+  neft: 'NEFT Transfer',
+  imps: 'IMPS Transfer',
+  rtgs: 'RTGS Transfer',
+  cash: 'Cash',
+  other: 'Other'
+};
+
 function getPeriodDates(period, date) {
   const ref = date ? new Date(date) : new Date();
   let startDate, endDate;
@@ -21,8 +32,11 @@ function getPeriodDates(period, date) {
     const sunday = new Date(monday);
     sunday.setDate(monday.getDate() + 6);
     endDate = sunday.toISOString().split('T')[0];
+  } else if (period === 'all') {
+    startDate = '2020-01-01';
+    endDate = '2035-12-31';
   } else {
-    // monthly
+    // monthly default
     startDate = `${ref.getFullYear()}-${String(ref.getMonth() + 1).padStart(2, '0')}-01`;
     const lastDay = new Date(ref.getFullYear(), ref.getMonth() + 1, 0);
     endDate = lastDay.toISOString().split('T')[0];
@@ -48,6 +62,9 @@ function getPreviousPeriodDates(period, date) {
     const sunday = new Date(monday);
     sunday.setDate(monday.getDate() + 6);
     endDate = sunday.toISOString().split('T')[0];
+  } else if (period === 'all') {
+    startDate = '2010-01-01';
+    endDate = '2019-12-31';
   } else {
     // monthly
     const prevMonth = new Date(ref.getFullYear(), ref.getMonth() - 1, 1);
@@ -56,6 +73,100 @@ function getPreviousPeriodDates(period, date) {
     endDate = lastDay.toISOString().split('T')[0];
   }
   return { startDate, endDate };
+}
+
+function computePaymentModes(txns) {
+  const byModeMap = {};
+  for (const t of txns) {
+    const modeKey = t.payment_mode || 'other';
+    if (!byModeMap[modeKey]) {
+      byModeMap[modeKey] = {
+        mode: modeKey,
+        label: MODE_LABELS[modeKey] || modeKey.toUpperCase(),
+        debit: 0,
+        credit: 0,
+        count: 0
+      };
+    }
+    byModeMap[modeKey].count += 1;
+    if (t.type === 'debit') byModeMap[modeKey].debit += Number(t.amount);
+    if (t.type === 'credit') byModeMap[modeKey].credit += Number(t.amount);
+  }
+  return Object.values(byModeMap).sort((a, b) => (b.debit + b.credit) - (a.debit + a.credit));
+}
+
+function generateInsights(debits, credits, totalDebit, totalCredit, byCategory, byPaymentMode) {
+  const insights = [];
+  const net = totalCredit - totalDebit;
+  const savingsRate = totalCredit > 0 ? ((totalCredit - totalDebit) / totalCredit) * 100 : 0;
+
+  // 1. Overall net cash flow insight
+  if (totalCredit === 0 && totalDebit === 0) {
+    insights.push({ icon: '💬', title: 'No Activity', text: 'No recorded transactions in this period yet. Send SMS or add manual entries to start seeing insights!' });
+    return insights;
+  }
+
+  if (totalCredit > totalDebit && totalCredit > 0) {
+    insights.push({
+      icon: '💰',
+      title: 'Positive Cash Flow',
+      text: `You saved ₹${net.toLocaleString('en-IN')} (${savingsRate.toFixed(1)}% savings rate) during this period! Keep up the great financial discipline.`
+    });
+  } else if (totalDebit > totalCredit && totalCredit > 0) {
+    insights.push({
+      icon: '⚠️',
+      title: 'Expenditure Exceeded Income',
+      text: `Your debits exceeded your incoming credits by ₹${Math.abs(net).toLocaleString('en-IN')} in this timeframe.`
+    });
+  } else if (totalCredit === 0 && totalDebit > 0) {
+    insights.push({
+      icon: '📉',
+      title: 'Expense Tracker Active',
+      text: `You tracked ₹${totalDebit.toLocaleString('en-IN')} across ${debits.length} debit transactions.`
+    });
+  }
+
+  // 2. Payment Medium Insight (Credited & Debited breakdown)
+  const topDebitMode = byPaymentMode.slice().sort((a, b) => b.debit - a.debit)[0];
+  const topCreditMode = byPaymentMode.slice().sort((a, b) => b.credit - a.credit)[0];
+  if (topDebitMode && topDebitMode.debit > 0) {
+    const share = Math.round((topDebitMode.debit / (totalDebit || 1)) * 100);
+    insights.push({
+      icon: '💳',
+      title: 'Primary Spending Medium',
+      text: `Most of your outgoing expenditures were via ${topDebitMode.label} totaling ₹${topDebitMode.debit.toLocaleString('en-IN')} (${share}% of total debits across ${topDebitMode.count} txns).`
+    });
+  }
+  if (topCreditMode && topCreditMode.credit > 0) {
+    insights.push({
+      icon: '📥',
+      title: 'Primary Income Medium',
+      text: `You received ₹${topCreditMode.credit.toLocaleString('en-IN')} credited directly via ${topCreditMode.label}.`
+    });
+  }
+
+  // 3. Category Dominance Insight
+  if (byCategory.length > 0 && byCategory[0].amount > 0) {
+    const topCat = byCategory[0];
+    const share = Math.round((topCat.amount / (totalDebit || 1)) * 100);
+    insights.push({
+      icon: topCat.emoji || '🔥',
+      title: 'Top Expenditure Category',
+      text: `${topCat.name} was your highest spending category at ₹${topCat.amount.toLocaleString('en-IN')}, representing ${share}% of total spending.`
+    });
+  }
+
+  // 4. Average Transaction Size
+  if (debits.length > 0) {
+    const avg = Math.round(totalDebit / debits.length);
+    insights.push({
+      icon: '📊',
+      title: 'Average Expense',
+      text: `On average, you spend ₹${avg.toLocaleString('en-IN')} per debit transaction.`
+    });
+  }
+
+  return insights;
 }
 
 // ── GET /api/dashboard/summary ────────────────────────────────────────
@@ -92,12 +203,8 @@ router.get('/summary', async (req, res, next) => {
     }
     const byCategory = Object.values(byCategoryMap).sort((a, b) => b.amount - a.amount);
 
-    // By payment mode
-    const byModeMap = {};
-    for (const t of debits) {
-      byModeMap[t.payment_mode] = (byModeMap[t.payment_mode] || 0) + Number(t.amount);
-    }
-    const byPaymentMode = Object.entries(byModeMap).map(([mode, amount]) => ({ mode, amount }));
+    // By payment mode (now separating debit and credit)
+    const byPaymentMode = computePaymentModes(txns);
 
     // Daily trend
     const trendMap = {};
@@ -108,11 +215,9 @@ router.get('/summary', async (req, res, next) => {
     }
     const dailyTrend = Object.values(trendMap).sort((a, b) => a.date.localeCompare(b.date));
 
-    // Top category
     const topCategory = byCategory[0] || null;
-
-    // Biggest single payment
     const biggest = debits.reduce((max, t) => Number(t.amount) > Number(max?.amount || 0) ? t : max, null);
+    const insights = generateInsights(debits, credits, totalDebit, totalCredit, byCategory, byPaymentMode);
 
     res.json({
       period,
@@ -127,6 +232,7 @@ router.get('/summary', async (req, res, next) => {
       by_category: byCategory,
       by_payment_mode: byPaymentMode,
       daily_trend: dailyTrend,
+      insights,
     });
   } catch (err) {
     next(err);
@@ -163,15 +269,6 @@ router.get('/analytics', async (req, res, next) => {
 
     if (prevError) throw prevError;
 
-    // Budgets for current period
-    const { data: budgets, error: budgetError } = await supabaseAdmin
-      .from('budgets')
-      .select('id, amount, period, category_id, categories(name,emoji,color)')
-      .eq('user_id', userId)
-      .eq('is_active', true);
-
-    if (budgetError) throw budgetError;
-
     const debits = txns.filter(t => t.type === 'debit');
     const credits = txns.filter(t => t.type === 'credit');
     const prevDebits = prevTxns.filter(t => t.type === 'debit');
@@ -193,7 +290,7 @@ router.get('/analytics', async (req, res, next) => {
     }
     const byCategory = Object.values(byCategoryMap).sort((a, b) => b.amount - a.amount);
 
-    // Category breakdown (previous) for comparison
+    // Category breakdown (previous) for MoM comparison
     const prevByCategoryMap = {};
     for (const t of prevDebits) {
       const key = t.category_id || 'uncategorised';
@@ -203,7 +300,6 @@ router.get('/analytics', async (req, res, next) => {
       prevByCategoryMap[key].amount += Number(t.amount);
     }
 
-    // Category with MoM change
     const byCategoryWithChange = byCategory.map(cat => {
       const prev = prevByCategoryMap[cat.category_id];
       const prevAmount = prev?.amount || 0;
@@ -211,48 +307,8 @@ router.get('/analytics', async (req, res, next) => {
       return { ...cat, prev_amount: prevAmount, change_pct: Math.round(change * 100) / 100 };
     });
 
-    // Budget vs Actual
-    const budgetComparison = [];
-    for (const budget of budgets) {
-      const budgetPeriod = budget.period;
-      let budgetStart, budgetEnd;
-      if (budgetPeriod === 'daily') {
-        budgetStart = budgetEnd = startDate;
-      } else if (budgetPeriod === 'weekly') {
-        const day = new Date(startDate).getDay();
-        const monday = new Date(startDate);
-        monday.setDate(monday.getDate() - (day === 0 ? 6 : day - 1));
-        budgetStart = monday.toISOString().split('T')[0];
-        const sunday = new Date(monday);
-        sunday.setDate(monday.getDate() + 6);
-        budgetEnd = sunday.toISOString().split('T')[0];
-      } else {
-        budgetStart = startDate;
-        budgetEnd = endDate;
-      }
-
-      const relevantDebits = debits.filter(d => 
-        d.transaction_date >= budgetStart && 
-        d.transaction_date <= budgetEnd &&
-        (!budget.category_id || d.category_id === budget.category_id)
-      );
-      const spent = relevantDebits.reduce((s, t) => s + Number(t.amount), 0);
-
-      const budgetAmount = Number(budget.amount);
-      const pct = budgetAmount > 0 ? (spent / budgetAmount) * 100 : 0;
-      const status = pct >= 100 ? 'over' : pct >= 80 ? 'warning' : 'safe';
-
-      budgetComparison.push({
-        budget_id: budget.id,
-        category: budget.categories ? { name: budget.categories.name, emoji: budget.categories.emoji, color: budget.categories.color } : { name: 'Overall', emoji: '📊', color: '#7C3AED' },
-        period: budgetPeriod,
-        budget: budgetAmount,
-        spent,
-        remaining: Math.max(0, budgetAmount - spent),
-        pct: Math.round(pct * 100) / 100,
-        status,
-      });
-    }
+    // Payment modes separating debit and credit
+    const byPaymentMode = computePaymentModes(txns);
 
     // Top merchants
     const merchantMap = {};
@@ -279,11 +335,8 @@ router.get('/analytics', async (req, res, next) => {
       amount: Math.round(amount * 100) / 100,
     }));
 
-    // Average transaction size
     const avgDebit = debits.length > 0 ? totalDebit / debits.length : 0;
     const avgCredit = credits.length > 0 ? totalCredit / credits.length : 0;
-
-    // Savings rate
     const savingsRate = totalCredit > 0 ? ((totalCredit - totalDebit) / totalCredit) * 100 : 0;
 
     // Monthly trend (last 6 months)
@@ -312,11 +365,12 @@ router.get('/analytics', async (req, res, next) => {
       .sort((a, b) => a.month.localeCompare(b.month))
       .map(m => ({ ...m, net: m.credit - m.debit, savings_rate: m.credit > 0 ? ((m.credit - m.debit) / m.credit) * 100 : 0 }));
 
+    const insights = generateInsights(debits, credits, totalDebit, totalCredit, byCategory, byPaymentMode);
+
     res.json({
       period,
       start_date: startDate,
       end_date: endDate,
-      // Summary
       total_debit: totalDebit,
       total_credit: totalCredit,
       net: totalCredit - totalDebit,
@@ -324,16 +378,12 @@ router.get('/analytics', async (req, res, next) => {
       savings_rate: Math.round(savingsRate * 100) / 100,
       avg_debit: Math.round(avgDebit * 100) / 100,
       avg_credit: Math.round(avgCredit * 100) / 100,
-      // Comparison
       prev_total_debit: prevTotalDebit,
       prev_total_credit: prevTotalCredit,
       debit_change_pct: prevTotalDebit > 0 ? Math.round(((totalDebit - prevTotalDebit) / prevTotalDebit) * 10000) / 100 : (totalDebit > 0 ? 100 : 0),
       credit_change_pct: prevTotalCredit > 0 ? Math.round(((totalCredit - prevTotalCredit) / prevTotalCredit) * 10000) / 100 : (totalCredit > 0 ? 100 : 0),
-      // Breakdowns
       by_category: byCategoryWithChange,
-      by_payment_mode: Object.entries(
-        debits.reduce((acc, t) => { acc[t.payment_mode] = (acc[t.payment_mode] || 0) + Number(t.amount); return acc; }, {})
-      ).map(([mode, amount]) => ({ mode, amount })),
+      by_payment_mode: byPaymentMode,
       daily_trend: Object.values(
         txns.reduce((acc, t) => {
           if (!acc[t.transaction_date]) acc[t.transaction_date] = { date: t.transaction_date, debit: 0, credit: 0 };
@@ -342,11 +392,10 @@ router.get('/analytics', async (req, res, next) => {
           return acc;
         }, {})
       ).sort((a, b) => a.date.localeCompare(b.date)),
-      // Advanced
-      budget_comparison: budgetComparison,
       top_merchants: topMerchants,
       day_of_week: dayOfWeekData,
       monthly_trend: monthlyTrend,
+      insights,
     });
   } catch (err) {
     next(err);

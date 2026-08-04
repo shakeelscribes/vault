@@ -157,7 +157,7 @@ export function ManualEntryModal({ isOpen, onClose, onSuccess, categories }) {
           <div>
             <label className="label">Category</label>
             <select
-              className="input"
+              className="select"
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
             >
@@ -173,7 +173,7 @@ export function ManualEntryModal({ isOpen, onClose, onSuccess, categories }) {
           <div>
             <label className="label">Payment Mode</label>
             <select
-              className="input"
+              className="select"
               value={paymentMode}
               onChange={(e) => setPaymentMode(e.target.value)}
             >
