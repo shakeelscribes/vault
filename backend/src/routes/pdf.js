@@ -57,13 +57,19 @@ router.post('/upload', upload.single('file'), async (req, res, next) => {
     let duplicateCount = 0;
     let flaggedCount = 0;
 
-    for (const row of rows) {
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
       try {
+        logger.info(`Processing PDF row ${i + 1}/${rows.length}: ${row.substring(0, 60)}`);
         let parsed = parseCanaraRow(row);
         if (!parsed || !parsed.amount || !parsed.type) {
+          logger.info(`Local parser missed row ${i + 1}, falling back to Groq`);
           parsed = await parsePDFRow(row);
         }
-        if (parsed.error || !parsed.amount || !parsed.type) continue;
+        if (!parsed || parsed.error || !parsed.amount || !parsed.type) {
+          logger.warn(`Skipping unparseable row ${i + 1}`);
+          continue;
+        }
 
         const { isDuplicate } = await checkDuplicate(userId, {
           amount: parsed.amount,
@@ -74,6 +80,7 @@ router.post('/upload', upload.single('file'), async (req, res, next) => {
 
         if (isDuplicate) {
           duplicateCount++;
+          logger.info(`Row ${i + 1} is duplicate, skipping`);
           continue;
         }
 
@@ -98,8 +105,9 @@ router.post('/upload', upload.single('file'), async (req, res, next) => {
 
         importedCount++;
         if (isFlagged) flaggedCount++;
+        logger.info(`Row ${i + 1} imported: ${parsed.merchant} ₹${parsed.amount} (${parsed.type})`);
       } catch (rowErr) {
-        logger.warn('Skipped PDF row', { row: row.substring(0, 50), error: rowErr.message });
+        logger.warn(`Skipped PDF row ${i + 1}`, { row: row.substring(0, 50), error: rowErr.message });
       }
     }
 

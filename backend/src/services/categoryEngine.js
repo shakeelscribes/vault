@@ -20,7 +20,7 @@ async function resolveCategory(userId, merchant, groqCategoryName) {
       .eq('user_id', userId)
       .ilike('merchant_pattern', `%${merchant}%`)
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (mapping?.category_id) {
       logger.info('Category resolved from merchant memory', { merchant, category_id: mapping.category_id });
@@ -37,7 +37,7 @@ async function resolveCategory(userId, merchant, groqCategoryName) {
       .ilike('name', groqCategoryName)
       .eq('is_active', true)
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (category?.id) return category.id;
   }
@@ -49,7 +49,7 @@ async function resolveCategory(userId, merchant, groqCategoryName) {
     .eq('user_id', userId)
     .eq('name', 'Other')
     .limit(1)
-    .single();
+    .maybeSingle();
 
   return other?.id ?? null;
 }

@@ -27,7 +27,7 @@ async function checkDuplicate(userId, { amount, transaction_date, merchant, type
     query = query.ilike('merchant', `%${merchant.substring(0, 10)}%`);
   }
 
-  const { data } = await query.limit(1).single();
+  const { data } = await query.limit(1).maybeSingle();
 
   return {
     isDuplicate: !!data,
