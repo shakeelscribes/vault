@@ -196,4 +196,84 @@ router.patch('/setup-complete', authMiddleware, async (req, res, next) => {
   }
 });
 
+// ── POST /api/auth/change-password ────────────────────────────────────
+router.post('/change-password', authMiddleware, async (req, res, next) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Please provide both current and new passwords.' });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'New password must be at least 6 characters long.' });
+    }
+
+    const { data: user, error } = await supabaseAdmin
+      .from('users')
+      .select('password_hash')
+      .eq('id', req.user.userId)
+      .single();
+
+    if (error || !user) return res.status(404).json({ error: 'User not found' });
+
+    const valid = await bcrypt.compare(currentPassword, user.password_hash);
+    if (!valid) {
+      return res.status(401).json({ error: 'Incorrect current password.' });
+    }
+
+    const password_hash = await bcrypt.hash(newPassword, 10);
+    const { error: updateErr } = await supabaseAdmin
+      .from('users')
+      .update({ password_hash })
+      .eq('id', req.user.userId);
+
+    if (updateErr) throw updateErr;
+
+    logger.info('Password successfully changed for user', { userId: req.user.userId });
+    res.json({ status: 'ok', message: 'Password updated successfully.' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── POST /api/auth/reset-password ─────────────────────────────────────
+router.post('/reset-password', async (req, res, next) => {
+  try {
+    const { username, recoveryKey, newPassword } = req.body;
+    if (!username || !recoveryKey || !newPassword) {
+      return res.status(400).json({ error: 'Please fill out all required fields.' });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'New password must be at least 6 characters long.' });
+    }
+
+    if (recoveryKey !== config.auth.vaultApiKey) {
+      return res.status(403).json({ error: 'Invalid Master Recovery Key.' });
+    }
+
+    const { data: user, error } = await supabaseAdmin
+      .from('users')
+      .select('id, username')
+      .eq('username', username)
+      .single();
+
+    if (error || !user) {
+      return res.status(404).json({ error: 'No user found with that username.' });
+    }
+
+    const password_hash = await bcrypt.hash(newPassword, 10);
+    const { error: updateErr } = await supabaseAdmin
+      .from('users')
+      .update({ password_hash })
+      .eq('id', user.id);
+
+    if (updateErr) throw updateErr;
+
+    clearFail(username); // reset any account lockout flags upon password reset
+    logger.info('Password reset via Master Recovery Key for user', { username });
+    res.json({ status: 'ok', message: 'Password reset successfully. You can now log in.' });
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;

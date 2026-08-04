@@ -16,6 +16,11 @@ export default function SettingsPage() {
   const [user, setUser] = useState(null);
   const [categories, setCategories] = useState([]);
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [passwordMsg, setPasswordMsg] = useState({ type: '', text: '' });
+  const [changingPwd, setChangingPwd] = useState(false);
 
   useEffect(() => {
     api.me().then(res => setUser(res.user)).catch(console.error);
@@ -37,6 +42,26 @@ export default function SettingsPage() {
 
   function handleExportCSV() {
     window.open(api.exportCSV(), '_blank');
+  }
+
+  async function handleChangePassword(e) {
+    e.preventDefault();
+    setPasswordMsg({ type: '', text: '' });
+    if (!currentPassword || !newPassword) {
+      setPasswordMsg({ type: 'error', text: 'Please fill out both fields.' });
+      return;
+    }
+    try {
+      setChangingPwd(true);
+      const res = await api.changePassword({ currentPassword, newPassword });
+      setPasswordMsg({ type: 'success', text: res.message || 'Password updated successfully!' });
+      setCurrentPassword('');
+      setNewPassword('');
+    } catch (err) {
+      setPasswordMsg({ type: 'error', text: err.message || 'Failed to change password.' });
+    } finally {
+      setChangingPwd(false);
+    }
   }
 
   const phaseLabels = {
@@ -225,6 +250,51 @@ export default function SettingsPage() {
           <button className="btn btn-ghost" style={{ width: '100%', justifyContent: 'flex-start' }} onClick={handleExportCSV}>
             <FileSpreadsheet size={18} /> Export as CSV / Excel
           </button>
+        </div>
+
+        <div className="card" style={{ padding: '16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ fontSize: '0.9rem' }}>Security & Credentials 🔐</h3>
+            <button
+              className="btn btn-ghost"
+              style={{ fontSize: '0.75rem', padding: '4px 10px' }}
+              onClick={() => setShowPasswordForm(!showPasswordForm)}
+            >
+              {showPasswordForm ? 'Close' : 'Change Password'}
+            </button>
+          </div>
+          {showPasswordForm && (
+            <form onSubmit={handleChangePassword} style={{ marginTop: '14px', display: 'flex', flexDirection: 'column', gap: '12px', background: 'var(--bg-glass-light)', padding: '12px', borderRadius: '10px' }}>
+              <div>
+                <label className="label" style={{ display: 'block', fontSize: '0.75rem', marginBottom: '4px', fontWeight: 600 }}>CURRENT PASSWORD</label>
+                <input
+                  type="password"
+                  placeholder="Enter current password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  style={{ width: '100%', height: '38px', padding: '6px 10px', borderRadius: '8px', border: '1px solid var(--border-glass)', background: 'var(--bg-card)', color: 'var(--text-primary)' }}
+                />
+              </div>
+              <div>
+                <label className="label" style={{ display: 'block', fontSize: '0.75rem', marginBottom: '4px', fontWeight: 600 }}>NEW PASSWORD</label>
+                <input
+                  type="password"
+                  placeholder="New password (min 6 chars)"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  style={{ width: '100%', height: '38px', padding: '6px 10px', borderRadius: '8px', border: '1px solid var(--border-glass)', background: 'var(--bg-card)', color: 'var(--text-primary)' }}
+                />
+              </div>
+              {passwordMsg.text && (
+                <div style={{ fontSize: '0.8rem', fontWeight: 600, color: passwordMsg.type === 'error' ? 'var(--debit)' : '#10B981', padding: '6px', borderRadius: '6px', background: 'rgba(0,0,0,0.2)' }}>
+                  {passwordMsg.text}
+                </div>
+              )}
+              <button type="submit" className="btn btn-primary" style={{ height: '38px', fontSize: '0.85rem' }} disabled={changingPwd}>
+                {changingPwd ? 'Updating...' : 'Update Password'}
+              </button>
+            </form>
+          )}
         </div>
 
         <div className="card" style={{ padding: '16px' }}>

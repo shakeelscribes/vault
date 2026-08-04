@@ -11,6 +11,33 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showForgot, setShowForgot] = useState(false);
+  const [forgotUser, setForgotUser] = useState('');
+  const [recoveryKey, setRecoveryKey] = useState('');
+  const [newResetPassword, setNewResetPassword] = useState('');
+  const [resetting, setResetting] = useState(false);
+
+  async function handleResetSubmit(e) {
+    e.preventDefault();
+    setResetting(true);
+    try {
+      const res = await api.resetPassword({
+        username: forgotUser,
+        recoveryKey,
+        newPassword: newResetPassword,
+      });
+      toast.success(res.message || 'Password reset successfully! Please sign in.');
+      setShowForgot(false);
+      setForgotUser('');
+      setRecoveryKey('');
+      setNewResetPassword('');
+      setPassword('');
+    } catch (err) {
+      toast.error(err.message || 'Password reset failed.');
+    } finally {
+      setResetting(false);
+    }
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -92,7 +119,19 @@ export default function LoginPage() {
             />
           </div>
 
-          <button type="submit" className="btn btn-primary" disabled={loading} style={{ marginTop: '8px' }}>
+          {!isRegister && (
+            <div style={{ textAlign: 'right', marginTop: '-6px' }}>
+              <button
+                type="button"
+                onClick={() => setShowForgot(true)}
+                style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', fontSize: '0.8rem', cursor: 'pointer', textDecoration: 'underline' }}
+              >
+                Forgot Password?
+              </button>
+            </div>
+          )}
+
+          <button type="submit" className="btn btn-primary" disabled={loading} style={{ marginTop: '4px' }}>
             {loading ? 'Please wait...' : (isRegister ? 'Create Account' : 'Sign In')}
           </button>
         </form>
@@ -116,6 +155,94 @@ export default function LoginPage() {
           </button>
         </div>
       </div>
+
+      {/* Master Recovery Modal */}
+      {showForgot && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.75)',
+          backdropFilter: 'blur(6px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px',
+          zIndex: 9999,
+        }}>
+          <div className="card" style={{ width: '100%', maxWidth: '420px', padding: '28px', borderLeft: '3px solid var(--accent)' }}>
+            <div className="flex-between" style={{ marginBottom: '16px', alignItems: 'center' }}>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-primary)' }}>🔐 Reset Credentials</h3>
+              <button
+                type="button"
+                onClick={() => setShowForgot(false)}
+                style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 700, fontSize: '1.2rem' }}
+              >
+                ✕
+              </button>
+            </div>
+            <p className="text-muted" style={{ fontSize: '0.82rem', marginBottom: '18px', lineHeight: '1.4' }}>
+              Enter your account Username along with your Master Recovery Key (<code style={{ background: 'var(--bg-glass-light)', padding: '2px 4px', borderRadius: '4px' }}>VAULT_API_KEY</code>) to override and reset your forgotten password.
+            </p>
+            <form onSubmit={handleResetSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div>
+                <label className="label">Username</label>
+                <input
+                  type="text"
+                  className="input"
+                  placeholder="Enter your username"
+                  value={forgotUser}
+                  onChange={(e) => setForgotUser(e.target.value)}
+                  required
+                />
+              </div>
+              <div>
+                <label className="label">Master Recovery Key (API Key)</label>
+                <input
+                  type="password"
+                  className="input"
+                  placeholder="e.g. vault_sk_..."
+                  value={recoveryKey}
+                  onChange={(e) => setRecoveryKey(e.target.value)}
+                  required
+                />
+              </div>
+              <div>
+                <label className="label">New Password</label>
+                <input
+                  type="password"
+                  className="input"
+                  placeholder="New secret password (min 6 chars)"
+                  value={newResetPassword}
+                  onChange={(e) => setNewResetPassword(e.target.value)}
+                  required
+                />
+              </div>
+              <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  style={{ flex: 1, justifyContent: 'center' }}
+                  onClick={() => setShowForgot(false)}
+                  disabled={resetting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  style={{ flex: 1, justifyContent: 'center' }}
+                  disabled={resetting}
+                >
+                  {resetting ? 'Resetting...' : 'Reset Password'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
