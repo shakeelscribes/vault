@@ -1,15 +1,20 @@
-import './src/styles/globals.css';
+import '@/styles/globals.css';
 import { Plus_Jakarta_Sans } from 'next/font/google';
 import { Toaster } from 'react-hot-toast';
 
 const font = Plus_Jakarta_Sans({ subsets: ['latin'], weight: ['300','400','500','600','700','800'] });
 
+export const viewport = {
+  themeColor: '#7C3AED',
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+};
+
 export const metadata = {
   title: 'VAULT — Real-Time Expense Tracker',
   description: 'Track every rupee in real time. Canara Bank SMS → instant dashboard.',
   manifest: '/manifest.json',
-  themeColor: '#7C3AED',
-  viewport: 'width=device-width, initial-scale=1, viewport-fit=cover',
   appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: 'VAULT' },
 };
 

@@ -15,9 +15,13 @@ export default function AnalyticsPage() {
   const [categories, setCategories] = useState([]);
   const [period, setPeriod] = useState('monthly');
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.summary({ period }).then(setSummary).catch(console.error);
+    setLoading(true);
+    api.summary({ period })
+      .then(res => { setSummary(res); setLoading(false); })
+      .catch(err => { console.error(err); setLoading(false); });
     api.getCategories().then(setCategories).catch(console.error);
   }, [period]);
 
@@ -49,7 +53,19 @@ export default function AnalyticsPage() {
       {
         label: 'Amount (₹)',
         data: summary?.by_payment_mode?.map(m => m.amount) || [],
-        backgroundColor: ['#7C3AED', '#3B82F6', '#10B981', '#F59E0B', '#6B7280'],
+        backgroundColor: ['#7C3AED', '#3B82F6', '#10B981', '#F59E0B', '#6B7280', '#EC4899'],
+        borderRadius: 6,
+      },
+    ],
+  };
+
+  const donutData = {
+    labels: summary?.by_category?.map(c => c.name) || [],
+    datasets: [
+      {
+        data: summary?.by_category?.map(c => c.amount) || [],
+        backgroundColor: summary?.by_category?.map(c => c.color) || ['#7C3AED'],
+        borderWidth: 0,
       },
     ],
   };
@@ -72,21 +88,40 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      {/* Income vs Expense Trend Line Chart */}
-      <div className="card" style={{ padding: '16px', marginBottom: '16px' }}>
-        <h3 style={{ fontSize: '0.9rem', marginBottom: '12px' }}>Cash Flow Trend</h3>
-        <div style={{ height: '180px' }}>
-          <Line data={trendLineData} options={{ responsive: true, maintainAspectRatio: false }} />
+      {loading ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div className="skeleton" style={{ height: '180px' }} />
+          <div className="skeleton" style={{ height: '180px' }} />
         </div>
-      </div>
+      ) : (
+        <>
+          {/* Income vs Expense Trend Line Chart */}
+          <div className="card" style={{ padding: '16px', marginBottom: '16px' }}>
+            <h3 style={{ fontSize: '0.9rem', marginBottom: '12px' }}>Cash Flow Trend</h3>
+            <div style={{ height: '180px' }}>
+              <Line data={trendLineData} options={{ responsive: true, maintainAspectRatio: false }} />
+            </div>
+          </div>
 
-      {/* Payment Mode Distribution Bar Chart */}
-      <div className="card" style={{ padding: '16px', marginBottom: '16px' }}>
-        <h3 style={{ fontSize: '0.9rem', marginBottom: '12px' }}>Payment Mode Split</h3>
-        <div style={{ height: '180px' }}>
-          <Bar data={paymentModeData} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }} />
-        </div>
-      </div>
+          {/* Payment Mode Distribution Bar Chart */}
+          <div className="card" style={{ padding: '16px', marginBottom: '16px' }}>
+            <h3 style={{ fontSize: '0.9rem', marginBottom: '12px' }}>Payment Mode Split</h3>
+            <div style={{ height: '180px' }}>
+              <Bar data={paymentModeData} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }} />
+            </div>
+          </div>
+
+          {/* Category Breakdown Donut */}
+          {summary?.by_category?.length > 0 && (
+            <div className="card" style={{ padding: '16px', marginBottom: '16px' }}>
+              <h3 style={{ fontSize: '0.9rem', marginBottom: '12px' }}>Category Breakdown</h3>
+              <div style={{ height: '180px', display: 'flex', justifyContent: 'center' }}>
+                <Doughnut data={donutData} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }} />
+              </div>
+            </div>
+          )}
+        </>
+      )}
 
       <ManualEntryModal
         isOpen={isManualModalOpen}

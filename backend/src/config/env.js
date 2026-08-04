@@ -26,7 +26,7 @@ module.exports = {
   },
   groq: {
     apiKey: process.env.GROQ_API_KEY,
-    model: process.env.GROQ_MODEL || 'llama-3.1-70b-versatile',
+    model: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
   },
   auth: {
     vaultApiKey: process.env.VAULT_API_KEY,

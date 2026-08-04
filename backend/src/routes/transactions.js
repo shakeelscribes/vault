@@ -31,16 +31,14 @@ router.get('/', async (req, res, next) => {
       type,
       is_flagged,
       search,
+      sort = 'date_desc',
     } = req.query;
 
     let query = supabaseAdmin
       .from('transactions')
       .select(TXN_SELECT, { count: 'exact' })
       .eq('user_id', userId)
-      .eq('is_deleted', false)
-      .order('transaction_date', { ascending: false })
-      .order('created_at', { ascending: false })
-      .range(Number(offset), Number(offset) + Number(limit) - 1);
+      .eq('is_deleted', false);
 
     if (start_date) query = query.gte('transaction_date', start_date);
     if (end_date) query = query.lte('transaction_date', end_date);
@@ -49,6 +47,25 @@ router.get('/', async (req, res, next) => {
     if (type) query = query.eq('type', type);
     if (is_flagged !== undefined) query = query.eq('is_flagged', is_flagged === 'true');
     if (search) query = query.ilike('merchant', `%${search}%`);
+
+    // Apply sorting
+    switch (sort) {
+      case 'date_asc':
+        query = query.order('transaction_date', { ascending: true }).order('created_at', { ascending: true });
+        break;
+      case 'amount_desc':
+        query = query.order('amount', { ascending: false });
+        break;
+      case 'amount_asc':
+        query = query.order('amount', { ascending: true });
+        break;
+      case 'date_desc':
+      default:
+        query = query.order('transaction_date', { ascending: false }).order('created_at', { ascending: false });
+        break;
+    }
+
+    query = query.range(Number(offset), Number(offset) + Number(limit) - 1);
 
     const { data, error, count } = await query;
     if (error) throw error;

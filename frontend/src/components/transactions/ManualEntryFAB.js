@@ -3,7 +3,14 @@ import { useState } from 'react';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { X } from 'lucide-react';
-import { QUICK_PRESETS } from '../../../../backend/src/utils/constants';
+
+const QUICK_PRESETS = [
+  { label: '☕ Chai', amount: 10, category: 'Food & Dining', payment_mode: 'cash' },
+  { label: '🍵 Tea', amount: 15, category: 'Food & Dining', payment_mode: 'cash' },
+  { label: '🚌 Bus', amount: 20, category: 'Transport', payment_mode: 'cash' },
+  { label: '🥤 Drink', amount: 30, category: 'Food & Dining', payment_mode: 'cash' },
+  { label: '⛽ Petrol', amount: 100, category: 'Transport', payment_mode: 'cash' },
+];
 
 export function ManualEntryModal({ isOpen, onClose, onSuccess, categories }) {
   const [amount, setAmount] = useState('');

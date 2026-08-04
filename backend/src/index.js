@@ -22,9 +22,27 @@ const dashboardRouter = require('./routes/dashboard');
 const app = express();
 
 // ── Security ──────────────────────────────────────────────────────────
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: false, // Disable CSP in dev to allow mobile connections
+}));
+
+// CORS configuration — allow localhost and local network IP
 app.use(cors({
-  origin: config.frontendUrl,
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps, curl, shortcuts)
+    if (!origin) return callback(null, true);
+
+    if (
+      config.nodeEnv === 'development' ||
+      origin.includes('localhost') ||
+      origin.includes('127.0.0.1') ||
+      origin.includes('192.168.') ||
+      origin === config.frontendUrl
+    ) {
+      return callback(null, true);
+    }
+    callback(new Error('Not allowed by CORS'));
+  },
   credentials: true,
 }));
 
@@ -62,7 +80,7 @@ app.use((req, res) => {
 app.use(errorHandler);
 
 // ── Start ─────────────────────────────────────────────────────────────
-app.listen(config.port, () => {
+app.listen(config.port, '0.0.0.0', () => {
   logger.info(`VAULT API running on port ${config.port} [${config.nodeEnv}]`);
 });
 

@@ -5,6 +5,8 @@ const logger = require('../utils/logger');
 
 const groq = new Groq({ apiKey: config.groq.apiKey });
 
+const ACTIVE_GROQ_MODEL = 'llama-3.3-70b-versatile';
+
 // ── System Prompt ─────────────────────────────────────────────────────
 const SMS_SYSTEM_PROMPT = `You are a banking SMS parser for Canara Bank (India).
 Extract transaction details from the SMS and return ONLY valid JSON. No explanation, no markdown.
@@ -65,7 +67,7 @@ async function withRetry(fn, retries = 3) {
     } catch (err) {
       lastError = err;
       if (attempt < retries) {
-        const delay = Math.pow(2, attempt - 1) * 1000; // 1s, 2s, 4s
+        const delay = Math.pow(2, attempt - 1) * 1000;
         logger.warn(`Groq retry ${attempt}/${retries} after ${delay}ms`, { error: err.message });
         await new Promise(r => setTimeout(r, delay));
       }
@@ -77,8 +79,12 @@ async function withRetry(fn, retries = 3) {
 // ── Parse SMS ─────────────────────────────────────────────────────────
 async function parseSMS(rawSms) {
   return withRetry(async () => {
+    const modelToUse = (config.groq.model && !config.groq.model.includes('3.1'))
+      ? config.groq.model
+      : ACTIVE_GROQ_MODEL;
+
     const completion = await groq.chat.completions.create({
-      model: config.groq.model,
+      model: modelToUse,
       temperature: 0,
       max_tokens: 300,
       messages: [
@@ -112,8 +118,12 @@ async function parseSMS(rawSms) {
 // ── Parse PDF Row ─────────────────────────────────────────────────────
 async function parsePDFRow(rowText) {
   return withRetry(async () => {
+    const modelToUse = (config.groq.model && !config.groq.model.includes('3.1'))
+      ? config.groq.model
+      : ACTIVE_GROQ_MODEL;
+
     const completion = await groq.chat.completions.create({
-      model: config.groq.model,
+      model: modelToUse,
       temperature: 0,
       max_tokens: 300,
       messages: [

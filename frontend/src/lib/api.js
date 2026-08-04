@@ -58,6 +58,10 @@ export const api = {
     const q = new URLSearchParams(params).toString();
     return request(`/dashboard/summary${q ? '?' + q : ''}`);
   },
+  analytics: (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return request(`/dashboard/analytics${q ? '?' + q : ''}`);
+  },
 
   // Transactions
   getTransactions: (params = {}) => {
