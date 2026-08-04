@@ -1,0 +1,15 @@
+name: Deploy Backend
+on:
+  push:
+    branches: [main]
+    paths: ['backend/**']
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy to Railway
+        uses: berviantoleo/railway-deploy@main
+        with:
+          railway_token: ${{ secrets.RAILWAY_TOKEN }}
+          service: vault-backend
