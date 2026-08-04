@@ -1,40 +1,55 @@
-﻿# Dependencies
+# Node / Dependencies
 node_modules/
+**/node_modules/
 .pnp
 .pnp.js
 
-# Environment variables
+# Environment variables & secrets
 .env
 .env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*.local
+*.env
+!.env.example
+!.env.local.example
 
-# Next.js
+# Build outputs & caches
 .next/
+**/.next/
 out/
+**/out/
 build/
-
-# Production build
+**/build/
 dist/
+**/dist/
 
 # Logs
+logs/
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
-*.log
 
-# OS files
+# PWA Service Worker generated files
+frontend/public/sw.js
+frontend/public/workbox-*.js
+frontend/public/sw.js.map
+frontend/public/workbox-*.js.map
+
+# OS & Temp files
 .DS_Store
 Thumbs.db
+*.tmp
+*.bak
 
-# Editor
+# IDE & Editor settings
 .vscode/
 .idea/
 *.swp
 *.swo
 
-# TypeScript
+# Diagnostic & Test reports
+coverage/
+.nyc_output/
 *.tsbuildinfo
 next-env.d.ts
