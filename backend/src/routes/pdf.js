@@ -3,7 +3,7 @@ const { Router } = require('express');
 const multer = require('multer');
 const { supabaseAdmin } = require('../db/supabase');
 const authMiddleware = require('../middleware/auth');
-const { extractPDFText, splitIntoRows } = require('../services/pdfParser');
+const { extractPDFText, splitIntoRows, parseCanaraRow } = require('../services/pdfParser');
 const { parsePDFRow } = require('../services/groqParser');
 const { checkDuplicate } = require('../services/deduplication');
 const { resolveCategory } = require('../services/categoryEngine');
@@ -59,7 +59,10 @@ router.post('/upload', upload.single('file'), async (req, res, next) => {
 
     for (const row of rows) {
       try {
-        const parsed = await parsePDFRow(row);
+        let parsed = parseCanaraRow(row);
+        if (!parsed || !parsed.amount || !parsed.type) {
+          parsed = await parsePDFRow(row);
+        }
         if (parsed.error || !parsed.amount || !parsed.type) continue;
 
         const { isDuplicate } = await checkDuplicate(userId, {
