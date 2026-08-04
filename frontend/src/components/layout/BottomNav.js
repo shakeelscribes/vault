@@ -20,16 +20,16 @@ export function BottomNav({ onOpenManualEntry }) {
       bottom: 0,
       left: 0,
       right: 0,
-      height: 'var(--nav-height-mobile)',
-      paddingBottom: 'var(--safe-bottom)',
-      background: 'var(--bg-glass)',
-      backdropFilter: 'blur(20px)',
-      WebkitBackdropFilter: 'blur(20px)',
+      minHeight: 'calc(68px + max(20px, env(safe-area-inset-bottom, 20px)))',
+      paddingTop: '8px',
+      paddingBottom: 'max(20px, env(safe-area-inset-bottom, 20px))',
+      background: 'var(--bg-secondary)',
+      boxShadow: '0 -4px 25px rgba(0, 0, 0, 0.08)',
       borderTop: '1px solid var(--border-glass)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'space-around',
-      zIndex: 100,
+      zIndex: 9999,
     }}>
       {navItems.slice(0, 2).map((item) => {
         const Icon = item.icon;

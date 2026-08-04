@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { api } from '@/lib/api';
 import { BottomNav } from '@/components/layout/BottomNav';
 import { ManualEntryModal } from '@/components/transactions/ManualEntryFAB';
+import { RefreshButton } from '@/components/common/RefreshButton';
 import { Plus, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -68,12 +69,15 @@ export default function BudgetsPage() {
   }
 
   return (
-    <div className="mobile-page" style={{ padding: '16px', maxWidth: '600px', margin: '0 auto' }}>
-      <div className="flex-between" style={{ marginBottom: '16px' }}>
-        <h1 style={{ fontSize: '1.5rem' }}>Budgets & Targets</h1>
-        <button className="btn btn-primary" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => setIsAddBudgetOpen(true)}>
-          <Plus size={16} /> New Budget
-        </button>
+    <div className="mobile-page">
+      <div className="flex-between" style={{ marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+        <h1 style={{ fontSize: '1.5rem', marginBottom: '2px' }}>Budgets & Targets</h1>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <RefreshButton onRefresh={fetchData} />
+          <button className="btn btn-primary" style={{ padding: '8px 14px', fontSize: '0.8rem', borderRadius: '100px' }} onClick={() => setIsAddBudgetOpen(true)}>
+            <Plus size={16} /> New Budget
+          </button>
+        </div>
       </div>
 
       {isAddBudgetOpen && (

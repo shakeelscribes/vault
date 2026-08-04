@@ -5,6 +5,7 @@ import { useRealtime } from '@/hooks/useRealtime';
 import { api } from '@/lib/api';
 import { BottomNav } from '@/components/layout/BottomNav';
 import { ManualEntryModal } from '@/components/transactions/ManualEntryFAB';
+import { RefreshButton } from '@/components/common/RefreshButton';
 import { ArrowDownLeft, ArrowUpRight, Wallet, Sparkles, CreditCard, PieChart as PieIcon } from 'lucide-react';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement } from 'chart.js';
 import { Bar, Doughnut } from 'react-chartjs-2';
@@ -86,27 +87,29 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="mobile-page" style={{ padding: '16px', maxWidth: '650px', margin: '0 auto' }}>
+    <div className="mobile-page">
       {/* Header */}
-      <div className="flex-between" style={{ marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+      <div className="flex-between" style={{ marginBottom: '14px', flexWrap: 'wrap', gap: '12px' }}>
         <div>
-          <h1 style={{ fontSize: '1.6rem', color: 'var(--text-primary)', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <h1 style={{ fontSize: '1.6rem', color: 'var(--text-primary)', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
             <span style={{ color: 'var(--accent)' }}>⚡ Vault</span>
           </h1>
           <p className="text-muted" style={{ fontSize: '0.82rem' }}>Canara Bank • Live SMS Intelligence</p>
         </div>
-        <div style={{ display: 'flex', gap: '6px' }}>
-          {Object.entries(PERIOD_LABELS).map(([key, label]) => (
-            <button
-              key={key}
-              className={`btn ${period === key ? 'btn-primary' : 'btn-ghost'}`}
-              style={{ fontSize: '0.75rem', padding: '5px 10px', textTransform: 'capitalize' }}
-              onClick={() => setPeriod(key)}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <RefreshButton onRefresh={loadData} />
+      </div>
+
+      <div style={{ display: 'flex', gap: '6px', marginBottom: '18px', flexWrap: 'wrap' }}>
+        {Object.entries(PERIOD_LABELS).map(([key, label]) => (
+          <button
+            key={key}
+            className={`btn ${period === key ? 'btn-primary' : 'btn-ghost'}`}
+            style={{ fontSize: '0.78rem', padding: '6px 12px', textTransform: 'capitalize', borderRadius: '100px' }}
+            onClick={() => setPeriod(key)}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
       {loading ? (

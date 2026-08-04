@@ -5,6 +5,7 @@ import { useRealtime } from '@/hooks/useRealtime';
 import { api } from '@/lib/api';
 import { BottomNav } from '@/components/layout/BottomNav';
 import { ManualEntryModal } from '@/components/transactions/ManualEntryFAB';
+import { RefreshButton } from '@/components/common/RefreshButton';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend, ArcElement } from 'chart.js';
 import { Line, Doughnut, Bar } from 'react-chartjs-2';
 import { ArrowDownLeft, ArrowUpRight, Wallet, TrendingUp, Sparkles, CreditCard as CardIcon, DollarSign, PieChart, ShoppingBag } from 'lucide-react';
@@ -49,9 +50,23 @@ export default function AnalyticsPage() {
     onTransaction: () => fetchAnalytics(),
   });
 
+  // Helper to prevent squished x-axis chart label overlap on mobile iPhone screens
+  const formatChartLabel = (label) => {
+    if (!label) return '';
+    if (label === 'Debit Card (POS)' || label === 'Debit Card (POS) 💳') return ['Debit Card', '(POS)'];
+    if (label.includes('NEFT')) return ['NEFT', 'Transfer'];
+    if (label.includes('IMPS')) return ['IMPS', 'Transfer'];
+    if (label.includes('RTGS')) return ['RTGS', 'Transfer'];
+    if (label.length > 11) {
+      const words = label.split(' ');
+      if (words.length > 1) return [words[0], words.slice(1).join(' ')];
+    }
+    return label;
+  };
+
   // Chart 1: Payment Medium Breakdown (Credited vs Debited)
   const paymentModeData = {
-    labels: data?.by_payment_mode?.map(m => m.label) || [],
+    labels: data?.by_payment_mode?.map(m => formatChartLabel(m.label)) || [],
     datasets: [
       {
         label: 'Credited (Income) ₹',
@@ -120,8 +135,8 @@ export default function AnalyticsPage() {
       }
     },
     scales: {
-      x: { ticks: { color: '#64748B' }, grid: { color: 'rgba(128,128,128,0.1)' } },
-      y: { ticks: { color: '#64748B' }, grid: { color: 'rgba(128,128,128,0.1)' } }
+      x: { ticks: { color: '#64748B', maxRotation: 0, minRotation: 0, font: { size: 10, weight: '600' } }, grid: { color: 'rgba(128,128,128,0.08)' } },
+      y: { ticks: { color: '#64748B' }, grid: { color: 'rgba(128,128,128,0.08)' } }
     }
   };
 
@@ -137,27 +152,29 @@ export default function AnalyticsPage() {
   };
 
   return (
-    <div className="mobile-page" style={{ padding: '16px', maxWidth: '650px', margin: '0 auto' }}>
+    <div className="mobile-page">
       {/* Header & Time Period Selector */}
-      <div className="flex-between" style={{ marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+      <div className="flex-between" style={{ marginBottom: '14px', flexWrap: 'wrap', gap: '12px' }}>
         <div>
-          <h1 style={{ fontSize: '1.5rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <h1 style={{ fontSize: '1.5rem', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
             <Sparkles size={24} color="var(--accent)" /> Deep Insights
           </h1>
-          <p className="text-muted" style={{ fontSize: '0.8rem' }}>Understand where every rupee flows</p>
+          <p className="text-muted" style={{ fontSize: '0.82rem' }}>Understand where every rupee flows</p>
         </div>
-        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-          {Object.entries(PERIOD_LABELS).map(([key, label]) => (
-            <button
-              key={key}
-              className={`btn ${period === key ? 'btn-primary' : 'btn-ghost'}`}
-              style={{ fontSize: '0.75rem', padding: '6px 12px', textTransform: 'capitalize' }}
-              onClick={() => setPeriod(key)}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <RefreshButton onRefresh={fetchAnalytics} />
+      </div>
+
+      <div style={{ display: 'flex', gap: '6px', marginBottom: '18px', flexWrap: 'wrap' }}>
+        {Object.entries(PERIOD_LABELS).map(([key, label]) => (
+          <button
+            key={key}
+            className={`btn ${period === key ? 'btn-primary' : 'btn-ghost'}`}
+            style={{ fontSize: '0.78rem', padding: '6px 12px', textTransform: 'capitalize', borderRadius: '100px' }}
+            onClick={() => setPeriod(key)}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
       {loading ? (

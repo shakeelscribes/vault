@@ -5,6 +5,7 @@ import { useRealtime } from '@/hooks/useRealtime';
 import { api } from '@/lib/api';
 import { BottomNav } from '@/components/layout/BottomNav';
 import { ManualEntryModal } from '@/components/transactions/ManualEntryFAB';
+import { RefreshButton } from '@/components/common/RefreshButton';
 import { Search, Trash2, Flag, Filter, Download, Calendar, CreditCard, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -163,26 +164,29 @@ export default function TransactionsPage() {
   }
 
   return (
-    <div className="mobile-page" style={{ padding: '16px', maxWidth: '650px', margin: '0 auto' }}>
+    <div className="mobile-page">
       <div className="flex-between" style={{ marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
         <div>
-          <h1 style={{ fontSize: '1.5rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <h1 style={{ fontSize: '1.5rem', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
             📜 Transaction History
           </h1>
-          <p className="text-muted" style={{ fontSize: '0.8rem' }}>Live stream of previous & upcoming activities</p>
+          <p className="text-muted" style={{ fontSize: '0.82rem' }}>Live stream of previous & upcoming activities</p>
         </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button
-            className={`btn ${showFilters ? 'btn-primary' : 'btn-ghost'}`}
-            onClick={() => setShowFilters(!showFilters)}
-            style={{ fontSize: '0.8rem', padding: '6px 12px' }}
-          >
-            <Filter size={16} /> Filters {activeFilterCount > 0 && `(${activeFilterCount})`}
-          </button>
-          <button className="btn btn-ghost" onClick={handleExport} style={{ fontSize: '0.8rem', padding: '6px 12px' }}>
-            <Download size={16} /> Export CSV
-          </button>
-        </div>
+        <RefreshButton onRefresh={loadTransactions} />
+      </div>
+
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '14px', flexWrap: 'wrap' }}>
+        <button
+          className={`btn ${showFilters ? 'btn-primary' : 'btn-ghost'}`}
+          onClick={() => setShowFilters(!showFilters)}
+          style={{ fontSize: '0.8rem', padding: '6px 12px' }}
+        >
+          <Filter size={16} /> Filters {activeFilterCount > 0 && `(${activeFilterCount})`}
+        </button>
+        <button className="btn btn-ghost" onClick={handleExport} style={{ fontSize: '0.8rem', padding: '6px 12px' }}>
+          <Download size={16} /> Export CSV
+        </button>
+      </div>
       </div>
 
       {/* Summary Bar for current history selection */}

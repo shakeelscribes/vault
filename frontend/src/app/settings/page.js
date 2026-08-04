@@ -5,6 +5,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { api } from '@/lib/api';
 import { BottomNav } from '@/components/layout/BottomNav';
 import { ManualEntryModal } from '@/components/transactions/ManualEntryFAB';
+import { RefreshButton } from '@/components/common/RefreshButton';
 import { Sun, Moon, Download, Upload, LogOut, Shield, FileSpreadsheet } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -54,8 +55,11 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="mobile-page" style={{ padding: '16px', maxWidth: '600px', margin: '0 auto' }}>
-      <h1 style={{ fontSize: '1.5rem', marginBottom: '16px' }}>Settings</h1>
+    <div className="mobile-page">
+      <div className="flex-between" style={{ marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+        <h1 style={{ fontSize: '1.5rem', marginBottom: '2px' }}>Settings</h1>
+        <RefreshButton />
+      </div>
 
       {/* User Profile */}
       <div className="card" style={{ padding: '16px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '16px' }}>
