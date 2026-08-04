@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 
 export function useTheme() {
   useEffect(() => {
-    const saved = localStorage.getItem('vault_theme') || 'dark';
+    const saved = localStorage.getItem('vault_theme') || 'light';
     applyTheme(saved);
   }, []);
 
@@ -18,7 +18,7 @@ export function useTheme() {
   }
 
   function toggle() {
-    const current = localStorage.getItem('vault_theme') || 'dark';
+    const current = localStorage.getItem('vault_theme') || 'light';
     applyTheme(current === 'dark' ? 'light' : 'dark');
   }
 

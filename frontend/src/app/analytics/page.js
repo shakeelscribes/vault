@@ -22,7 +22,7 @@ export default function AnalyticsPage() {
   const { user } = useAuth();
   const [data, setData] = useState(null);
   const [categories, setCategories] = useState([]);
-  const [period, setPeriod] = useState('monthly');
+  const [period, setPeriod] = useState('daily');
   const [loading, setLoading] = useState(true);
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
 
@@ -109,19 +109,19 @@ export default function AnalyticsPage() {
     plugins: {
       legend: {
         position: 'top',
-        labels: { color: '#F9FAFB', font: { size: 12, family: 'Plus Jakarta Sans' }, boxWidth: 12 },
+        labels: { color: '#64748B', font: { size: 12, family: 'Plus Jakarta Sans' }, boxWidth: 12 },
       },
       tooltip: {
-        backgroundColor: '#16213E',
+        backgroundColor: '#1E293B',
         titleColor: '#F9FAFB',
-        bodyColor: '#9CA3AF',
-        borderColor: 'rgba(255,255,255,0.1)',
+        bodyColor: '#CBD5E1',
+        borderColor: 'rgba(128,128,128,0.2)',
         borderWidth: 1,
       }
     },
     scales: {
-      x: { ticks: { color: '#9CA3AF' }, grid: { color: 'rgba(255,255,255,0.05)' } },
-      y: { ticks: { color: '#9CA3AF' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+      x: { ticks: { color: '#64748B' }, grid: { color: 'rgba(128,128,128,0.1)' } },
+      y: { ticks: { color: '#64748B' }, grid: { color: 'rgba(128,128,128,0.1)' } }
     }
   };
 
@@ -131,7 +131,7 @@ export default function AnalyticsPage() {
     plugins: {
       legend: {
         position: 'right',
-        labels: { color: '#F9FAFB', font: { size: 11 }, boxWidth: 10 }
+        labels: { color: '#64748B', font: { size: 11 }, boxWidth: 10 }
       }
     }
   };

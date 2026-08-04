@@ -28,7 +28,7 @@ export default function RootLayout({ children }) {
       </head>
       <body className={font.className}>
         <script dangerouslySetInnerHTML={{
-          __html: `(function(){var t=localStorage.getItem('vault_theme');if(t==='light')document.documentElement.setAttribute('data-theme','light');})();`
+          __html: `(function(){var t=localStorage.getItem('vault_theme')||'light';if(t==='light')document.documentElement.setAttribute('data-theme','light');else document.documentElement.removeAttribute('data-theme');})();`
         }} />
         {children}
         <Toaster position="top-center" />

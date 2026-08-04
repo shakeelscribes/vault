@@ -24,7 +24,7 @@ export default function Dashboard() {
   const { user } = useAuth();
   const [summary, setSummary] = useState(null);
   const [categories, setCategories] = useState([]);
-  const [period, setPeriod] = useState('weekly');
+  const [period, setPeriod] = useState('daily');
   const [loading, setLoading] = useState(true);
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
 
@@ -172,7 +172,7 @@ export default function Dashboard() {
               <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{summary?.transaction_count || 0} Txns</span>
             </div>
             <div style={{ height: '180px' }}>
-              <Bar data={barChartData} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top', labels: { color: '#9CA3AF', font: { size: 11 } } } }, scales: { x: { ticks: { color: '#9CA3AF' } }, y: { ticks: { color: '#9CA3AF' } } } }} />
+              <Bar data={barChartData} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top', labels: { color: '#64748B', font: { size: 11 } } } }, scales: { x: { ticks: { color: '#64748B' }, grid: { color: 'rgba(128,128,128,0.1)' } }, y: { ticks: { color: '#64748B' }, grid: { color: 'rgba(128,128,128,0.1)' } } } }} />
             </div>
           </div>
 
@@ -185,7 +185,7 @@ export default function Dashboard() {
                 </h3>
               </div>
               <div style={{ height: '190px', display: 'flex', justifyContent: 'center' }}>
-                <Doughnut data={donutData} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { color: '#F9FAFB', font: { size: 11 } } } } }} />
+                <Doughnut data={donutData} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { color: '#64748B', font: { size: 11 } } } } }} />
               </div>
             </div>
           )}
