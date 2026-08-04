@@ -51,26 +51,42 @@ export function BottomNav({ onOpenManualEntry }) {
         );
       })}
 
-      {/* Floating Center FAB */}
+      {/* Integrated Professional Add Action Button */}
       <button
         onClick={onOpenManualEntry}
         aria-label="Add transaction manually"
         style={{
-          width: '52px',
-          height: '52px',
-          borderRadius: '50%',
-          background: 'var(--accent)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '4px',
+          background: 'transparent',
           border: 'none',
-          color: '#fff',
+          cursor: 'pointer',
+          padding: 0,
+        }}
+      >
+        <div style={{
+          width: '46px',
+          height: '32px',
+          borderRadius: '16px',
+          background: 'var(--accent)',
+          color: '#ffffff',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          boxShadow: '0 4px 20px var(--accent-glow)',
-          transform: 'translateY(-14px)',
-          cursor: 'pointer',
-        }}
-      >
-        <Plus size={28} strokeWidth={2.5} />
+          boxShadow: '0 3px 14px var(--accent-glow)',
+          transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+        }}>
+          <Plus size={20} strokeWidth={2.8} />
+        </div>
+        <span style={{
+          fontSize: '0.75rem',
+          fontWeight: 700,
+          color: 'var(--text-primary)',
+        }}>
+          Add
+        </span>
       </button>
 
       {navItems.slice(2).map((item) => {

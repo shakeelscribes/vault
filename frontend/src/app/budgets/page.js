@@ -73,7 +73,7 @@ export default function BudgetsPage() {
       <div className="flex-between" style={{ marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
         <h1 style={{ fontSize: '1.5rem', marginBottom: '2px' }}>Budgets & Targets</h1>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <RefreshButton onRefresh={fetchData} />
+          <RefreshButton onRefresh={loadData} />
           <button className="btn btn-primary" style={{ padding: '8px 14px', fontSize: '0.8rem', borderRadius: '100px' }} onClick={() => setIsAddBudgetOpen(true)}>
             <Plus size={16} /> New Budget
           </button>

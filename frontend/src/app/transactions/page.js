@@ -187,7 +187,6 @@ export default function TransactionsPage() {
           <Download size={16} /> Export CSV
         </button>
       </div>
-      </div>
 
       {/* Summary Bar for current history selection */}
       <div className="card" style={{ padding: '12px 16px', marginBottom: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(124, 58, 237, 0.1)', border: '1px solid var(--accent-glow)' }}>
