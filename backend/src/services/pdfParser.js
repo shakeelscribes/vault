@@ -66,16 +66,34 @@ function parseCanaraRow(rowText) {
     if (year.length === 2) year = '20' + year;
     const transaction_date = `${year}-${month}-${day}T00:00:00Z`;
 
-    // 2. Extract Amount and Balance at end
-    const amountMatch = text.match(/([\d,]+(?:\.\d{2})?)\s+([\d,]+(?:\.\d{2})?)$/);
-    if (!amountMatch) return null;
+    // 2. Extract Amount and Balance by finding all monetary decimal figures in the string
+    // This avoids failures if trailing text like 'Cr', 'Dr', or page numbers exist at the end of the line
+    const matches = [...text.matchAll(/(\d+(?:,\d+)*\.\d{1,2})\b/g)];
+    if (!matches || matches.length === 0) {
+      logger.warn('Local parser could not find monetary decimal figures in row:', text.substring(0, 60));
+      return null;
+    }
 
-    const amount = parseFloat(amountMatch[1].replace(/,/g, ''));
-    const balance_after = parseFloat(amountMatch[2].replace(/,/g, ''));
-    if (isNaN(amount) || isNaN(balance_after)) return null;
+    let amountIndex = 0;
+    let amount = 0;
+    let balance_after = null;
 
-    // 3. Extract middle narration
-    let narration = text.slice(dateMatch[0].length, -amountMatch[0].length).trim();
+    if (matches.length >= 2) {
+      const amountMatch = matches[matches.length - 2];
+      const balanceMatch = matches[matches.length - 1];
+      amount = parseFloat(amountMatch[1].replace(/,/g, ''));
+      balance_after = parseFloat(balanceMatch[1].replace(/,/g, ''));
+      amountIndex = amountMatch.index;
+    } else {
+      const amountMatch = matches[0];
+      amount = parseFloat(amountMatch[1].replace(/,/g, ''));
+      amountIndex = amountMatch.index;
+    }
+
+    if (isNaN(amount) || amount === 0) return null;
+
+    // 3. Extract middle narration between Date and Amount
+    let narration = text.slice(dateMatch[0].length, amountIndex).trim();
 
     // 4. Determine Type & Mode
     let type = 'debit';
