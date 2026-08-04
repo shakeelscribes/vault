@@ -6,7 +6,7 @@ import { api } from '@/lib/api';
 import { BottomNav } from '@/components/layout/BottomNav';
 import { ManualEntryModal } from '@/components/transactions/ManualEntryFAB';
 import { RefreshButton } from '@/components/common/RefreshButton';
-import { Sun, Upload, LogOut, FileSpreadsheet, CheckCircle, AlertCircle } from 'lucide-react';
+import { Sun, Upload, LogOut, FileSpreadsheet, CheckCircle, AlertCircle, XCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function SettingsPage() {
@@ -22,6 +22,7 @@ export default function SettingsPage() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadResult, setUploadResult] = useState(null);
   const intervalRef = useRef(null);
+  const abortControllerRef = useRef(null);
 
   useEffect(() => {
     api.me().then(res => setUser(res.user)).catch(console.error);
@@ -54,6 +55,9 @@ export default function SettingsPage() {
     setTimeout(() => setUploadPhase('parsing'), 800);
     setTimeout(() => setUploadPhase('saving'), 3000);
 
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     try {
       const token = localStorage.getItem('vault_token');
       const BASE = process.env.NEXT_PUBLIC_BACKEND_URL;
@@ -61,6 +65,7 @@ export default function SettingsPage() {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
+        signal: controller.signal,
       });
 
       clearInterval(intervalRef.current);
@@ -81,14 +86,38 @@ export default function SettingsPage() {
     } catch (err) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
-      setUploadPhase('error');
-      setUploadProgress(100);
-      setUploadResult({ error: err.message || 'PDF upload failed' });
-      toast.error(err.message || 'PDF upload failed');
+      if (err.name === 'AbortError' || err.message?.includes('aborted')) {
+        setUploadPhase('error');
+        setUploadProgress(0);
+        setUploadResult({ error: 'Processing cancelled by user' });
+      } else {
+        setUploadPhase('error');
+        setUploadProgress(100);
+        setUploadResult({ error: err.message || 'PDF upload failed' });
+        toast.error(err.message || 'PDF upload failed');
+      }
     } finally {
       setUploading(false);
       e.target.value = '';
     }
+  }
+
+  function handleCancelUpload(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    setUploading(false);
+    setUploadPhase('error');
+    setUploadProgress(0);
+    setUploadResult({ error: 'Processing cancelled by user' });
+    toast('PDF processing cancelled', { icon: '🛑', style: { borderRadius: '10px', background: 'var(--bg-glass)', color: 'var(--text-primary)' } });
   }
 
   function handleExportCSV() {
@@ -198,7 +227,32 @@ export default function SettingsPage() {
                   {uploadPhase === 'error' && <AlertCircle size={13} />}
                   {phaseLabels[uploadPhase] || 'Processing...'}
                 </span>
-                <span>{Math.round(uploadProgress)}%</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>{Math.round(uploadProgress)}%</span>
+                  {uploading && (
+                    <button
+                      type="button"
+                      onClick={handleCancelUpload}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        padding: '3px 10px',
+                        background: 'var(--danger-muted)',
+                        color: 'var(--debit)',
+                        border: '1px solid rgba(239, 68, 68, 0.4)',
+                        borderRadius: '100px',
+                        fontSize: '0.7rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
+                      aria-label="Cancel PDF import"
+                    >
+                      <XCircle size={12} />
+                      Cancel
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           )}

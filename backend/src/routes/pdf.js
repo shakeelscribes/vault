@@ -58,6 +58,16 @@ router.post('/upload', upload.single('file'), async (req, res, next) => {
     let flaggedCount = 0;
 
     for (let i = 0; i < rows.length; i++) {
+      if (req.socket?.destroyed || req.destroyed) {
+        logger.warn(`Client cancelled connection at row ${i + 1}/${rows.length}. Halting import.`);
+        if (importRecord) {
+          await supabaseAdmin
+            .from('statement_imports')
+            .update({ status: 'cancelled', error_message: 'Cancelled by user' })
+            .eq('id', importRecord.id);
+        }
+        return;
+      }
       const row = rows[i];
       try {
         logger.info(`Processing PDF row ${i + 1}/${rows.length}: ${row.substring(0, 60)}`);
