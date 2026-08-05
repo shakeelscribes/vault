@@ -16,6 +16,7 @@ const BUDGET_PERIODS = ['daily', 'weekly', 'monthly'];
 const DEFAULT_CATEGORIES = [
   { name: 'Food & Dining',    emoji: '🍕', color: '#F97316' },
   { name: 'Transport',         emoji: '🚗', color: '#3B82F6' },
+  { name: 'Petrol',            emoji: '⛽', color: '#EF4444' },
   { name: 'Shopping',          emoji: '🛍️', color: '#8B5CF6' },
   { name: 'Bills & Utilities', emoji: '💡', color: '#F59E0B' },
   { name: 'Entertainment',     emoji: '🎬', color: '#EC4899' },
@@ -44,7 +45,7 @@ const QUICK_PRESETS = [
   { label: '🍵 Tea',     amount: 15,  category: 'Food & Dining', payment_mode: 'cash' },
   { label: '🚌 Bus',     amount: 20,  category: 'Transport',     payment_mode: 'cash' },
   { label: '🥤 Drink',   amount: 30,  category: 'Food & Dining', payment_mode: 'cash' },
-  { label: '⛽ Petrol',  amount: 100, category: 'Transport',     payment_mode: 'cash' },
+  { label: '⛽ Petrol',  amount: 100, category: 'Petrol',        payment_mode: 'cash' },
 ];
 
 module.exports = {

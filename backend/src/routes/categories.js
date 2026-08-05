@@ -20,6 +20,21 @@ router.get('/', async (req, res, next) => {
       .order('name');
 
     if (error) throw error;
+
+    // Auto-seed 'Petrol' category if missing for existing account
+    const hasPetrol = data.some(c => c.name.toLowerCase() === 'petrol');
+    if (!hasPetrol) {
+      const { data: newCat } = await supabaseAdmin
+        .from('categories')
+        .insert({ name: 'Petrol', emoji: '⛽', color: '#EF4444', user_id: req.user.userId, is_default: true, is_active: true })
+        .select()
+        .maybeSingle();
+      if (newCat) {
+        data.push(newCat);
+        data.sort((a, b) => (b.is_default ? 1 : 0) - (a.is_default ? 1 : 0) || a.name.localeCompare(b.name));
+      }
+    }
+
     res.json(data);
   } catch (err) {
     next(err);

@@ -1,10 +1,11 @@
 'use strict';
 const { supabaseAdmin } = require('../db/supabase');
 const logger = require('../utils/logger');
+const { DEFAULT_CATEGORIES } = require('../utils/constants');
 
 /**
  * Resolves the category_id for a transaction.
- * Priority: 1) merchant_mappings (user's own overrides), 2) Groq suggestion, 3) "Other"
+ * Priority: 0) Hardcoded precision rules (e.g. RSA SHANK -> Petrol), 1) merchant_mappings, 2) Groq suggestion, 3) "Other"
  *
  * @param {string} userId
  * @param {string|null} merchant
@@ -12,8 +13,29 @@ const logger = require('../utils/logger');
  * @returns {Promise<string|null>} category_id UUID or null
  */
 async function resolveCategory(userId, merchant, groqCategoryName) {
-  // 1. Merchant Memory lookup
+  let targetCatName = groqCategoryName;
+
+  // 0. Hardcoded precision overrides (e.g. RSA SHANK / Fuel / Petrol stations)
   if (merchant) {
+    const mUpper = merchant.toUpperCase();
+    if (
+      mUpper.includes('RSA SHANK') ||
+      mUpper.includes('SHANK') ||
+      mUpper.includes('PETROL') ||
+      mUpper.includes('FUEL') ||
+      mUpper.includes('HPCL') ||
+      mUpper.includes('BPCL') ||
+      mUpper.includes('IOCL') ||
+      mUpper.includes('SHELL') ||
+      mUpper.includes('INDIAN OIL')
+    ) {
+      targetCatName = 'Petrol';
+      logger.info('Merchant matched Petrol keywords rule', { merchant });
+    }
+  }
+
+  // 1. Merchant Memory lookup (only if not overridden by Petrol rule)
+  if (merchant && targetCatName !== 'Petrol') {
     const { data: mapping } = await supabaseAdmin
       .from('merchant_mappings')
       .select('category_id')
@@ -28,18 +50,41 @@ async function resolveCategory(userId, merchant, groqCategoryName) {
     }
   }
 
-  // 2. Groq AI suggestion
-  if (groqCategoryName) {
-    const { data: category } = await supabaseAdmin
+  // Normalize shorthand Groq category names
+  if (targetCatName) {
+    const n = targetCatName.toLowerCase();
+    if (n === 'food') targetCatName = 'Food & Dining';
+    if (n === 'bills') targetCatName = 'Bills & Utilities';
+    if (n === 'cash' || n === 'atm' || n === 'atm wdl') targetCatName = 'Cash Withdrawal';
+    if (n === 'transfer' || n === 'salary') targetCatName = 'Transfer';
+  }
+
+  // 2. Groq AI suggestion / Override target
+  if (targetCatName) {
+    let { data: category } = await supabaseAdmin
       .from('categories')
       .select('id')
       .eq('user_id', userId)
-      .ilike('name', groqCategoryName)
+      .ilike('name', targetCatName)
       .eq('is_active', true)
       .limit(1)
       .maybeSingle();
 
     if (category?.id) return category.id;
+
+    // If target category is a default category (like Petrol) but not in DB yet, auto-create it!
+    const defCat = DEFAULT_CATEGORIES.find(c => c.name.toLowerCase() === targetCatName.toLowerCase());
+    if (defCat) {
+      const { data: created } = await supabaseAdmin
+        .from('categories')
+        .insert({ name: defCat.name, emoji: defCat.emoji, color: defCat.color, user_id: userId, is_default: true, is_active: true })
+        .select('id')
+        .maybeSingle();
+      if (created?.id) {
+        logger.info('Auto-seeded missing category during resolve', { name: defCat.name, category_id: created.id });
+        return created.id;
+      }
+    }
   }
 
   // 3. Default: "Other"

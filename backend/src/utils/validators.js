@@ -26,6 +26,9 @@ const updateTransactionSchema = z.object({
   note: z.string().max(500).optional(),
   is_flagged: z.boolean().optional(),
   payment_mode: z.enum(PAYMENT_MODES).optional(),
+  type: z.enum(TRANSACTION_TYPES).optional(),
+  amount: z.number().positive().optional(),
+  transaction_date: z.string().optional(),
 }).strict();
 
 // ── Category ──────────────────────────────────────────────────────────

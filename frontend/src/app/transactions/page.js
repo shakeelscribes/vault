@@ -5,8 +5,9 @@ import { useRealtime } from '@/hooks/useRealtime';
 import { api } from '@/lib/api';
 import { BottomNav } from '@/components/layout/BottomNav';
 import { ManualEntryModal } from '@/components/transactions/ManualEntryFAB';
+import { EditTransactionModal } from '@/components/transactions/EditTransactionModal';
 import { RefreshButton } from '@/components/common/RefreshButton';
-import { Search, Trash2, Flag, Filter, Download, Calendar, CreditCard, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
+import { Search, Trash2, Pencil, Flag, Filter, Download, Calendar, CreditCard, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const PAYMENT_MODES = [
@@ -42,6 +43,7 @@ export default function TransactionsPage() {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
+  const [editingTxn, setEditingTxn] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
     start_date: '',
@@ -501,13 +503,22 @@ export default function TransactionsPage() {
                           </div>
                         )}
                       </div>
-                      <button
-                        onClick={() => handleDelete(t.id)}
-                        style={{ background: 'var(--bg-glass-light)', border: '1px solid var(--border-glass)', color: 'var(--text-muted)', cursor: 'pointer', padding: '7px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                        title="Remove transaction"
-                      >
-                        <Trash2 size={15} />
-                      </button>
+                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                        <button
+                          onClick={() => setEditingTxn(t)}
+                          style={{ background: 'var(--bg-glass-light)', border: '1px solid var(--border-glass)', color: 'var(--text-secondary)', cursor: 'pointer', padding: '7px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}
+                          title="Edit transaction"
+                        >
+                          <Pencil size={15} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(t.id)}
+                          style={{ background: 'var(--bg-glass-light)', border: '1px solid var(--border-glass)', color: 'var(--text-muted)', cursor: 'pointer', padding: '7px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}
+                          title="Remove transaction"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -516,6 +527,17 @@ export default function TransactionsPage() {
           ))}
         </div>
       )}
+
+      <EditTransactionModal
+        isOpen={!!editingTxn}
+        onClose={() => setEditingTxn(null)}
+        onSuccess={() => {
+          setEditingTxn(null);
+          loadTransactions();
+        }}
+        transaction={editingTxn}
+        categories={categories}
+      />
 
       <ManualEntryModal
         isOpen={isManualModalOpen}
